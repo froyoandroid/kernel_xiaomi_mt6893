@@ -9,6 +9,21 @@ fwdir := $(subst $(quote),,$(CONFIG_EXTRA_FIRMWARE_DIR))
 fwabs := $(addprefix $(srctree)/,$(filter-out /%,$(fwdir)))$(filter /%,$(fwdir))
 
 fw-external-y := $(subst $(quote),,$(CONFIG_EXTRA_FIRMWARE))
+# Xiaomi K10A DRM Firmware
+fw-shipped-$(CONFIG_DRM_PANEL_K10A_36_02_0A_DSC_VDO) += novatek_nt36672c_k10a_fw01.bin
+fw-shipped-$(CONFIG_DRM_PANEL_K10A_36_02_0A_DSC_VDO) += novatek_nt36672c_k10a_fw02.bin
+fw-shipped-$(CONFIG_DRM_PANEL_K10A_36_02_0A_DSC_VDO) += novatek_nt36672c_k10a_mp01.bin
+fw-shipped-$(CONFIG_DRM_PANEL_K10A_36_02_0A_DSC_VDO) += novatek_nt36672c_k10a_mp02.bin
+
+# Xiaomi K10A Touchscreen Firmware
+fw-shipped-$(CONFIG_TOUCHSCREEN_NT36xxx_HOSTDL_SPI) += novatek_ts_fw.bin
+fw-shipped-$(CONFIG_TOUCHSCREEN_NT36xxx_HOSTDL_SPI) += novatek_ts_fw01.bin
+fw-shipped-$(CONFIG_TOUCHSCREEN_NT36xxx_HOSTDL_SPI) += novatek_ts_fw02.bin
+fw-shipped-$(CONFIG_TOUCHSCREEN_NT36xxx_HOSTDL_SPI) += novatek_ts_fw_144.bin
+fw-shipped-$(CONFIG_TOUCHSCREEN_NT36xxx_HOSTDL_SPI) += novatek_ts_fw_jdi.bin
+fw-shipped-$(CONFIG_TOUCHSCREEN_NT36xxx_HOSTDL_SPI) += novatek_ts_fw_tm.bin
+fw-shipped-$(CONFIG_TOUCHSCREEN_NT36xxx_HOSTDL_SPI) += novatek_ts_mp01.bin
+fw-shipped-$(CONFIG_TOUCHSCREEN_NT36xxx_HOSTDL_SPI) += novatek_ts_mp02.bin
 
 fw-shipped-all := $(fw-shipped-y) $(fw-shipped-m) $(fw-shipped-)
 quiet_cmd_ihex  = IHEX    $@
@@ -103,6 +118,3 @@ endif
 # (during 'make clean' .config isn't included so they're all in $(fw-shipped-))
 targets := $(fw-shipped-) $(patsubst $(obj)/%,%, \
                                 $(shell find $(obj) -name \*.gen.S 2>/dev/null))
-# Without this, built-in.o won't be created when it's empty, and the
-# final vmlinux link will fail.
-obj- := dummy

@@ -227,10 +227,8 @@ int cpu_cluster_mapping(unsigned int cpu)
 
 	if (cpu < 4) /* cpu 0-3 */
 		bank = UPOWER_BANK_LL;
-	else if (cpu < 7) /* cpu 4-6 */
+	else if (cpu < 8) /* cpu 4-7 */
 		bank = UPOWER_BANK_L;
-	else if (cpu < 8) /* cpu 7 */
-		bank = UPOWER_BANK_B;
 
 	return bank;
 }

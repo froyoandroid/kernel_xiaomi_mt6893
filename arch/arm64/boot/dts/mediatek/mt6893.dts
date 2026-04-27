@@ -191,15 +191,10 @@ page_owner=on loop.max_part=7";
 				core2 {
 					cpu = <&cpu6>;
 				};
-				doe_dvfs_cl1: doe {
-				};
-			};
-
-			cluster2 {
-				core0 {
+				core3 {
 					cpu = <&cpu7>;
 				};
-				doe_dvfs_cl2: doe {
+				doe_dvfs_cl1: doe {
 				};
 			};
 		};

@@ -47,8 +47,8 @@ extern "C" {
 #define COBRA_OPP_NUM	(DVFS_OPP_NUM)
 #define TOTAL_CORE_NUM	(CORE_NUM_L+CORE_NUM_B+CORE_NUM_BB)
 #define CORE_NUM_L	(4)
-#define CORE_NUM_B	(3)
-#define CORE_NUM_BB	(1)
+#define CORE_NUM_B	(4)
+#define CORE_NUM_BB	(0)
 
 #define PPM_COBRA_TBL_SRAM_ADDR	(0x0011B800)
 #define PPM_COBRA_TBL_SRAM_SIZE \
@@ -165,9 +165,9 @@ static inline void ppm_get_cl_cpus(struct cpumask *cpu_mask, unsigned int cid)
 		cpumask_set_cpu(4, cpu_mask);
 		cpumask_set_cpu(5, cpu_mask);
 		cpumask_set_cpu(6, cpu_mask);
+		cpumask_set_cpu(7, cpu_mask);
 	} else if (cid == 2) {
 		cpumask_clear(cpu_mask);
-		cpumask_set_cpu(7, cpu_mask);
 	}
 }
 

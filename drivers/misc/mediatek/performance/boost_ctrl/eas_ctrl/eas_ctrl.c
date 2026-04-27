@@ -1580,6 +1580,17 @@ int eas_ctrl_init(struct proc_dir_entry *parent)
 		prefer_idle[i] = 0;
 		debug_prefer_idle[i] = -1;
 	}
+
+	/* Optimized Defaults for Chopin */
+	boost_value[CGROUP_TA][EAS_KIR_PERF] = 10;   /* Top-app boost */
+	current_boost_value[CGROUP_TA] = 10;
+	prefer_idle[CGROUP_TA] = 1;                  /* UI latency reduction */
+
+	boost_value[CGROUP_FG][EAS_KIR_PERF] = 5;    /* Foreground boost */
+	current_boost_value[CGROUP_FG] = 5;
+
+	boost_value[CGROUP_BG][EAS_KIR_PERF] = -10;  /* Background restriction */
+	current_boost_value[CGROUP_BG] = -10;
 #endif
 
 #if defined(CONFIG_UCLAMP_TASK_GROUP) && defined(CONFIG_SCHED_TUNE)
@@ -1595,8 +1606,8 @@ int eas_ctrl_init(struct proc_dir_entry *parent)
 	perf_sched_big_task_rotation = 0;
 	perf_sched_stune_task_thresh = -1;
 
-	default_schedplus_down_throttle_ns = 1000000;
-	default_schedplus_up_throttle_ns = 1000000;
+	default_schedplus_down_throttle_ns = 10000000;
+	default_schedplus_up_throttle_ns = 500000;
 	default_schedplus_sync_flag = 1;
 	cur_schedplus_down_throttle_ns = -1;
 	cur_schedplus_up_throttle_ns = -1;

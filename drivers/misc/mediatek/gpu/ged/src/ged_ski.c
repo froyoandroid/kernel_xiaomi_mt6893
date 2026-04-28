@@ -155,39 +155,11 @@ ssize_t gpu_min_clock_show(struct kobject *kobj,
 static ssize_t gpu_min_clock_store(struct kobject *kobj,
 		struct kobj_attribute *attr, const char *buf, size_t count)
 {
-	int min_freq = 0;
-	struct mt_gpufreq_power_table_info *power_table = NULL;
-	unsigned int table_num = 0;
-	unsigned int max_opp_idx = 0;
-	int idx = 0;
-	int index_count = 0;
-
-	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
-
-	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
-		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
-			if (kstrtoint(acBuffer, 0, &min_freq) == 0) {
-				if (min_freq <= 0)
-					return -EINVAL;
-
-				power_table = pass_gpu_table_to_eara();
-				table_num = mt_gpufreq_get_dvfs_table_num();
-				max_opp_idx = mt_gpufreq_get_seg_max_opp_index();
-
-				for (idx = max_opp_idx; index_count < table_num; index_count++) {
-					if (min_freq ==
-					    power_table[idx + index_count].gpufreq_khz) {
-						mtk_custom_boost_gpu_freq(index_count);
-						return count;
-					}
-				}
-
-				GED_LOGE("SKI: set min clock failed (%d not support)!\n", min_freq);
-			}
-		}
-	}
-
-	return -EINVAL;
+	/* Ignore all userspace minimum clock locks for the GPU.
+	 * Game Turbo artificially locks the Mali GPU to 886MHz during light games
+	 * causing massive overheating (41°C).
+	 * By ignoring this, the GPU governor can freely drop to 350MHz. */
+	return count;
 }
 
 static KOBJ_ATTR_RW(gpu_min_clock);

@@ -203,7 +203,7 @@ unsigned long arch_get_max_cpu_capacity(int cpu)
 {
 	/* Normalize MediaTek's internal capacity reporting for CPU 7. */
 	if (cpu == 7)
-		return per_cpu(cpu_scale, 4);
+		return 1000;
 	return per_cpu(cpu_scale, cpu);
 }
 

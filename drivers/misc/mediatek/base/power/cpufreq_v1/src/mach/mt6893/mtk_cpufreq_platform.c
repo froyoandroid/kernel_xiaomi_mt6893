@@ -113,7 +113,7 @@ struct mt_cpu_dvfs cpu_dvfs[NR_MT_CPU_DVFS] = {
 		.idx_opp_ppm_limit = 0,
 		.Vproc_buck_id = CPU_DVFS_VPROC1,
 		.Vsram_buck_id = CPU_DVFS_VSRAM1,
-		.Pll_id = PLL_B_CLUSTER,
+		.Pll_id = PLL_L_CLUSTER,
 	},
 
 	[MT_CPU_DVFS_CCI] = {

@@ -709,6 +709,12 @@ static ssize_t store_##file_name					\
 	if (ret != 1)							\
 		return -EINVAL;						\
 									\
+	/* Game Turbo override: prevent userspace from locking minimum freq too high */ \
+	if (!strcmp(#file_name, "scaling_min_freq")) { \
+		if (new_policy.object > 1000000) \
+			new_policy.object = 1000000; \
+	} \
+									\
 	temp = new_policy.object;					\
 	ret = cpufreq_set_policy(policy, &new_policy);		\
 	if (!ret)							\

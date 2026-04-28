@@ -187,42 +187,9 @@ static int cpufreq_oppidx_proc_show(struct seq_file *m, void *v)
 static ssize_t cpufreq_oppidx_proc_write(struct file *file,
 	const char __user *buffer, size_t count, loff_t *pos)
 {
-	struct mt_cpu_dvfs *p = PDE_DATA(file_inode(file));
-	int oppidx;
-	int rc;
-
-	char *buf = _copy_from_user_for_proc(buffer, count);
-
-	if (!buf)
-		return -EINVAL;
-
-	rc = kstrtoint(buf, 10, &oppidx);
-	if (rc < 0) {
-		p->dvfs_disable_by_procfs = false;
-		tag_pr_info("echo oppidx > /proc/cpufreq/%s/cpufreq_oppidx\n",
-		p->name);
-	} else {
-		if (oppidx >= 0 && oppidx < p->nr_opp_tbl) {
-			p->dvfs_disable_by_procfs = true;
-#ifdef CONFIG_HYBRID_CPU_DVFS
-			if (!cpu_dvfs_is(p, MT_CPU_DVFS_CCI))
-				cpuhvfs_set_freq(
-					arch_get_cluster_id(p->cpu_id),
-					cpu_dvfs_get_freq_by_idx(p, oppidx));
-#else
-			_mt_cpufreq_dvfs_request_wrapper(p, oppidx,
-			MT_CPU_DVFS_NORMAL, NULL);
-#endif
-		} else {
-			p->dvfs_disable_by_procfs = false;
-			tag_pr_info
-			("echo oppidx > /proc/cpufreq/%s/cpufreq_oppidx\n",
-			p->name);
-		}
-	}
-
-	free_page((unsigned long)buf);
-
+	/* Block Xiaomi perfserv/Game Turbo from hard-locking the CPU via MTK debug interfaces.
+	 * Writing to this node previously set dvfs_disable_by_procfs = true,
+	 * completely paralyzing the Schedutil governor and forcing 2.6GHz forever. */
 	return count;
 }
 
@@ -243,93 +210,7 @@ static int cpufreq_freq_proc_show(struct seq_file *m, void *v)
 static ssize_t cpufreq_freq_proc_write(struct file *file,
 	const char __user *buffer, size_t count, loff_t *pos)
 {
-	struct mt_cpu_dvfs *p = PDE_DATA(file_inode(file));
-	int freq, i, found = 0;
-	int rc;
-
-	char *buf = _copy_from_user_for_proc(buffer, count);
-
-	if (!buf)
-		return -EINVAL;
-
-	rc = kstrtoint(buf, 10, &freq);
-	if (rc < 0) {
-		p->dvfs_disable_by_procfs = false;
-		tag_pr_info
-		("echo khz > /proc/cpufreq/%s/cpufreq_freq\n", p->name);
-	} else {
-#ifdef CONFIG_MTK_CPU_MSSV
-		if (!cpumssv_get_state()) {
-			for (i = 0; i < p->nr_opp_tbl; i++) {
-				if (freq == p->opp_tbl[i].cpufreq_khz) {
-					found = 1;
-					break;
-				}
-			}
-		} else if (freq > 0)
-			found = 1;
-
-		if (found == 1) {
-			p->dvfs_disable_by_procfs = true;
-  #ifdef CONFIG_HYBRID_CPU_DVFS
-			if (!cpu_dvfs_is(p, MT_CPU_DVFS_CCI))
-    #ifdef SINGLE_CLUSTER
-				cpuhvfs_set_freq(cpufreq_get_cluster_id(
-					p->cpu_id), freq);
-    #else
-				cpuhvfs_set_freq(arch_get_cluster_id(
-					p->cpu_id), freq);
-    #endif
-			else
-				cpuhvfs_set_freq(MT_CPU_DVFS_CCI, freq);
-  #else
-			_mt_cpufreq_dvfs_request_wrapper(p,
-					i, MT_CPU_DVFS_NORMAL, NULL);
-  #endif
-		} else {
-			p->dvfs_disable_by_procfs = false;
-			tag_pr_info(
-		"frequency %dKHz! is not found in CPU opp table\n", freq);
-			}
-#else
-		if (freq < p->opp_tbl[p->nr_opp_tbl - 1].cpufreq_khz) {
-			if (freq != 0)
-				tag_pr_info
-				("frequency should higher than %dKHz!\n",
-				p->opp_tbl[p->nr_opp_tbl - 1].cpufreq_khz);
-
-			p->dvfs_disable_by_procfs = false;
-		} else {
-			for (i = 0; i < p->nr_opp_tbl; i++) {
-				if (freq == p->opp_tbl[i].cpufreq_khz) {
-					found = 1;
-					break;
-				}
-			}
-
-			if (found == 1) {
-				p->dvfs_disable_by_procfs = true;
-#ifdef CONFIG_HYBRID_CPU_DVFS
-				if (!cpu_dvfs_is(p, MT_CPU_DVFS_CCI))
-					cpuhvfs_set_freq(
-					arch_get_cluster_id(p->cpu_id),
-						cpu_dvfs_get_freq_by_idx(p, i));
-#else
-				_mt_cpufreq_dvfs_request_wrapper(p,
-				i, MT_CPU_DVFS_NORMAL, NULL);
-#endif
-			} else {
-				p->dvfs_disable_by_procfs = false;
-				tag_pr_info
-			("frequency %dKHz! is not found in CPU opp table\n",
-					    freq);
-			}
-		}
-#endif
-	}
-
-	free_page((unsigned long)buf);
-
+	/* Block Xiaomi perfserv/Game Turbo from hard-locking the CPU via MTK debug interfaces. */
 	return count;
 }
 

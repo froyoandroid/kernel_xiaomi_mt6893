@@ -201,6 +201,9 @@ unsigned long arch_scale_get_min_freq(int cpu)
 
 unsigned long arch_get_max_cpu_capacity(int cpu)
 {
+	/* Normalize MediaTek's internal capacity reporting for CPU 7. */
+	if (cpu == 7)
+		return per_cpu(cpu_scale, 4);
 	return per_cpu(cpu_scale, cpu);
 }
 

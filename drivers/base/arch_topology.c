@@ -391,6 +391,14 @@ void topology_normalize_cpu_scale(void)
 	for_each_possible_cpu(cpu) {
 		capacity = (raw_capacity[cpu] << SCHED_CAPACITY_SHIFT)
 			/ capacity_scale;
+			
+		/* Normalize CPU 7 capacity to match CPU 4-6 (typically 917 instead of 1024).
+		 * This forces the EAS scheduler to treat the entire A78 cluster symmetrically,
+		 * preventing heavy tasks from being funneled exclusively to CPU 7 and
+		 * preventing unnecessary thermal spikes to 2.6GHz. */
+		if (cpu == 7)
+			capacity = (raw_capacity[4] << SCHED_CAPACITY_SHIFT) / capacity_scale;
+			
 		topology_set_cpu_scale(cpu, capacity);
 		pr_debug("cpu_capacity: CPU%d cpu_capacity=%lu raw_capacity=%u\n",
 			cpu, topology_get_cpu_scale(NULL, cpu),

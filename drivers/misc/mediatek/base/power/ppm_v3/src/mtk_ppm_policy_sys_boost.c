@@ -303,8 +303,11 @@ static void ppm_sysboost_update_limit_cb(void)
 		ppm_clear_policy_limit(&sysboost_policy);
 
 		for (i = 0; i < req->cluster_num; i++) {
+			/* Ignore minimum frequency locks (SYS_BOOST) for Big and Prime clusters (i == 1 || i == 2).
+			 * This prevents Game Turbo (perfserv) from locking CPU 7 to 2.6GHz,
+			 * which forces the entire A78 cluster to 900mV due to the shared PLL. */
 			req->limit[i].min_cpufreq_idx =
-				(p->limit[i].min_freq_idx == -1)
+				(p->limit[i].min_freq_idx == -1 || i == 1 || i == 2)
 				? req->limit[i].min_cpufreq_idx
 				: p->limit[i].min_freq_idx;
 			req->limit[i].max_cpufreq_idx =

@@ -1591,6 +1591,12 @@ int eas_ctrl_init(struct proc_dir_entry *parent)
 
 	boost_value[CGROUP_BG][EAS_KIR_PERF] = -20;  /* Background restriction */
 	current_boost_value[CGROUP_BG] = -20;
+
+	/* Explicitly push defaults to SchedTune CGroup/Scheduler */
+	boost_write_for_perf_idx(CGROUP_TA, current_boost_value[CGROUP_TA]);
+	prefer_idle_for_perf_idx(CGROUP_TA, prefer_idle[CGROUP_TA]);
+	boost_write_for_perf_idx(CGROUP_FG, current_boost_value[CGROUP_FG]);
+	boost_write_for_perf_idx(CGROUP_BG, current_boost_value[CGROUP_BG]);
 #endif
 
 #if defined(CONFIG_UCLAMP_TASK_GROUP) && defined(CONFIG_SCHED_TUNE)

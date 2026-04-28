@@ -767,26 +767,6 @@ boost_write(struct cgroup_subsys_state *css, struct cftype *cft,
 	else if (boost < -100)
 		boost = -100;
 
-	/* Hardwire Optimized Defaults: Prevent userspace (PowerHAL) from resetting to 0 */
-	if (boost == 0) {
-		if (st->css.cgroup) {
-			char name[64];
-			cgroup_name(st->css.cgroup, name, sizeof(name));
-
-			if (strcmp(name, "top-app") == 0)
-				boost = 10;
-			else if (strcmp(name, "background") == 0)
-				boost = -20;
-			else if (strcmp(name, "foreground") == 0)
-				boost = 0;
-		} else {
-			/* Fallback to index if cgroup is not yet available */
-			if (st->idx == 2)      /* CGROUP_BG */
-				boost = -20;
-			else if (st->idx == 3) /* CGROUP_TA */
-				boost = 10;
-		}
-	}
 
 	st->boost = boost;
 

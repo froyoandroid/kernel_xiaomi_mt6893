@@ -193,9 +193,9 @@ struct GpuUtilization_Ex g_Util_Ex;
 static int ged_get_dvfs_loading_mode(void);
 #endif
 
-#define GED_DVFS_TIMER_BASED_DVFS_MARGIN 30
-static int gx_tb_dvfs_margin = GED_DVFS_TIMER_BASED_DVFS_MARGIN;
-static int gx_tb_dvfs_margin_cur = GED_DVFS_TIMER_BASED_DVFS_MARGIN;
+#define GED_DVFS_TIMER_BASED_DVFS_MARGIN 10
+static int gx_tb_dvfs_margin = 10;
+static int gx_tb_dvfs_margin_cur = 10;
 #ifdef GED_ENABLE_TIMER_BASED_DVFS_MARGIN
 #define MAX_TB_DVFS_MARGIN               99
 #define MIN_TB_DVFS_MARGIN               10
@@ -584,6 +584,10 @@ bool ged_dvfs_gpu_freq_commit(unsigned long ui32NewFreqID,
 		g_last_def_commit_freq_id = ui32NewFreqID;
 	if (ged_dvfs_gpu_freq_commit_fp != NULL) {
 
+		/* SMARTBOOST & CUSTOMIZATION: Disabled for Pure EAS efficiency. 
+		 * Preventing userspace from forcing unnecessary high GPU floors.
+		 */
+#if 0
 		if (ui32NewFreqID > g_bottom_freq_id) {
 			ui32NewFreqID = g_bottom_freq_id;
 			g_CommitType = MTK_GPU_DVFS_TYPE_SMARTBOOST;
@@ -599,6 +603,7 @@ bool ged_dvfs_gpu_freq_commit(unsigned long ui32NewFreqID,
 				(long long)g_cust_boost_freq_id,
 				5566, 0, 0);
 		}
+#endif
 
 		/* up bound */
 		if (ui32NewFreqID < g_cust_upbound_freq_id) {
@@ -1550,10 +1555,8 @@ static void ged_dvfs_freq_thermal_limitCB(unsigned int ui32LimitFreqID)
 
 void ged_dvfs_boost_gpu_freq(void)
 {
-	if (gpu_debug_enable)
-		GED_LOGE("%s", __func__);
-
-	ged_dvfs_freq_input_boostCB(0);
+	/* Disabled for Pure EAS efficiency: Prevent heat from constant touch in games */
+	return;
 }
 
 static void ged_dvfs_set_bottom_gpu_freq(unsigned int ui32FreqLevel)

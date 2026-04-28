@@ -750,6 +750,14 @@ boost_write(struct cgroup_subsys_state *css, struct cftype *cft,
 	else if (boost < -100)
 		boost = -100;
 
+	/* Hardwire Optimized Defaults: Prevent userspace (PowerHAL) from resetting to 0 */
+	if (boost == 0) {
+		if (st->idx == 2)      /* CGROUP_BG */
+			boost = -20;
+		else if (st->idx == 3) /* CGROUP_TA */
+			boost = 15;
+	}
+
 	st->boost = boost;
 
 	/* Update CPU boost */

@@ -162,6 +162,15 @@ int boost_write_for_perf_idx(int idx, int boost_value)
 	ct = allocated_group[idx];
 	if (ct) {
 		rcu_read_lock();
+		
+		/* Hardwire Optimized Defaults: Prevent internal MTK drivers from resetting to 0 */
+		if (boost_value == 0) {
+			if (idx == 2)      /* CGROUP_BG */
+				boost_value = -20;
+			else if (idx == 3) /* CGROUP_TA */
+				boost_value = 15;
+		}
+
 		ct->boost = boost_value;
 
 		/* Update CPU boost */

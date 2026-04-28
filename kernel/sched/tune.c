@@ -712,6 +712,23 @@ prefer_idle_write(struct cgroup_subsys_state *css, struct cftype *cft,
 	    u64 prefer_idle)
 {
 	struct schedtune *st = css_st(css);
+
+	if (st->css.cgroup) {
+		char name[64];
+		cgroup_name(st->css.cgroup, name, sizeof(name));
+
+		/* Hardwire Prefer Idle based on group name */
+		if (strcmp(name, "top-app") == 0 ||
+		    strcmp(name, "foreground") == 0 ||
+		    strcmp(name, "rt") == 0 ||
+		    strcmp(name, "camera-daemon") == 0 ||
+		    strcmp(name, "sf_standalone") == 0) {
+			prefer_idle = 1;
+		} else if (strcmp(name, "background") == 0) {
+			prefer_idle = 0;
+		}
+	}
+
 	st->prefer_idle = !!prefer_idle;
 
 #if MET_STUNE_DEBUG
@@ -752,10 +769,23 @@ boost_write(struct cgroup_subsys_state *css, struct cftype *cft,
 
 	/* Hardwire Optimized Defaults: Prevent userspace (PowerHAL) from resetting to 0 */
 	if (boost == 0) {
-		if (st->idx == 2)      /* CGROUP_BG */
-			boost = -20;
-		else if (st->idx == 3) /* CGROUP_TA */
-			boost = 15;
+		if (st->css.cgroup) {
+			char name[64];
+			cgroup_name(st->css.cgroup, name, sizeof(name));
+
+			if (strcmp(name, "top-app") == 0)
+				boost = 15;
+			else if (strcmp(name, "background") == 0)
+				boost = -20;
+			else if (strcmp(name, "foreground") == 0)
+				boost = 0;
+		} else {
+			/* Fallback to index if cgroup is not yet available */
+			if (st->idx == 2)      /* CGROUP_BG */
+				boost = -20;
+			else if (st->idx == 3) /* CGROUP_TA */
+				boost = 15;
+		}
 	}
 
 	st->boost = boost;
@@ -868,6 +898,22 @@ schedtune_css_alloc(struct cgroup_subsys_state *parent_css)
 
 	/* Initialize per CPUs boost group support */
 	st->idx = idx;
+
+	/* Hardwire Optimized Defaults at creation based on index (Safer for early boot) */
+	if (st->idx == 1) {      /* CGROUP_FG */
+		st->boost = 0;
+		st->prefer_idle = 1;
+	} else if (st->idx == 2) { /* CGROUP_BG */
+		st->boost = -20;
+		st->prefer_idle = 0;
+	} else if (st->idx == 3) { /* CGROUP_TA */
+		st->boost = 15;
+		st->prefer_idle = 1;
+	}
+	
+	pr_info("schedtune: group allocated with idx %d (boost=%d, prefer_idle=%d)\n",
+		st->idx, st->boost, st->prefer_idle);
+
 	if (schedtune_boostgroup_init(st))
 		goto release;
 

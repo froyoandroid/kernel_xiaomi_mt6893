@@ -165,7 +165,9 @@ int boost_write_for_perf_idx(int idx, int boost_value)
 		
 		/* Hardwire Optimized Defaults: Prevent internal MTK drivers from resetting to 0 */
 		if (boost_value == 0) {
-			if (idx == 2)      /* CGROUP_BG */
+			if (idx == 1)      /* CGROUP_FG */
+				boost_value = 0;
+			else if (idx == 2) /* CGROUP_BG */
 				boost_value = -20;
 			else if (idx == 3) /* CGROUP_TA */
 				boost_value = 15;
@@ -207,7 +209,15 @@ int prefer_idle_for_perf_idx(int idx, int prefer_idle)
 		return -EINVAL;
 
 	rcu_read_lock();
-	ct->prefer_idle = prefer_idle;
+	/* Hardwire Prefer Idle for EAS Performance */
+	if (idx == 1)      /* CGROUP_FG */
+		prefer_idle = 1;
+	else if (idx == 2) /* CGROUP_BG */
+		prefer_idle = 0;
+	else if (idx == 3) /* CGROUP_TA */
+		prefer_idle = 1;
+
+	ct->prefer_idle = !!prefer_idle;
 	rcu_read_unlock();
 
 #if MET_STUNE_DEBUG

@@ -1190,8 +1190,13 @@ static void ppm_limit_callback(struct ppm_client_req req)
 			p->idx_opp_ppm_limit =
 			ppm->cpu_limit[i].advise_cpufreq_idx;
 		} else {
-			p->idx_opp_ppm_base =
-			ppm->cpu_limit[i].min_cpufreq_idx;
+			/* Ignore minimum frequency locks from ALL PPM sources (USER_LIMIT, HARD_USER_LIMIT, SYS_BOOST)
+			 * for Big and Prime clusters (i == 1 || i == 2).
+			 * This guarantees that CPU 4-7 will never be forced to 2.6GHz/900mV during gaming. */
+			if (i == 1 || i == 2)
+				p->idx_opp_ppm_base = -1;
+			else
+				p->idx_opp_ppm_base = ppm->cpu_limit[i].min_cpufreq_idx;
 			/* ppm update base */
 			p->idx_opp_ppm_limit =
 			ppm->cpu_limit[i].max_cpufreq_idx;

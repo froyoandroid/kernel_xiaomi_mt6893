@@ -157,7 +157,6 @@ static ssize_t gpu_min_clock_store(struct kobject *kobj,
 {
 	/* Ignore all userspace minimum clock locks for the GPU.
 	 * Game Turbo artificially locks the Mali GPU to 886MHz during light games
-	 * causing massive overheating (41°C).
 	 * By ignoring this, the GPU governor can freely drop to 350MHz. */
 	return count;
 }

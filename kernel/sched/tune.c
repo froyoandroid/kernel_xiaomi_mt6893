@@ -774,7 +774,7 @@ boost_write(struct cgroup_subsys_state *css, struct cftype *cft,
 			cgroup_name(st->css.cgroup, name, sizeof(name));
 
 			if (strcmp(name, "top-app") == 0)
-				boost = 15;
+				boost = 10;
 			else if (strcmp(name, "background") == 0)
 				boost = -20;
 			else if (strcmp(name, "foreground") == 0)
@@ -784,7 +784,7 @@ boost_write(struct cgroup_subsys_state *css, struct cftype *cft,
 			if (st->idx == 2)      /* CGROUP_BG */
 				boost = -20;
 			else if (st->idx == 3) /* CGROUP_TA */
-				boost = 15;
+				boost = 10;
 		}
 	}
 
@@ -907,7 +907,7 @@ schedtune_css_alloc(struct cgroup_subsys_state *parent_css)
 		st->boost = -20;
 		st->prefer_idle = 0;
 	} else if (st->idx == 3) { /* CGROUP_TA */
-		st->boost = 15;
+		st->boost = 10;
 		st->prefer_idle = 1;
 	}
 	

@@ -170,7 +170,7 @@ int boost_write_for_perf_idx(int idx, int boost_value)
 			else if (idx == 2) /* CGROUP_BG */
 				boost_value = -20;
 			else if (idx == 3) /* CGROUP_TA */
-				boost_value = 15;
+				boost_value = 10;
 		}
 
 		ct->boost = boost_value;

@@ -1,0 +1,2320 @@
+commit 05deb23674d285b6d86bf5ff6b9154cf659baee0
+Author: firenza <masudtxg@gmail.com>
+Date:   Tue Apr 28 02:38:19 2026 +0700
+
+    refactor: update PPM cobra algorithm and platform headers while managing diagnostic reports and build artifacts
+
+diff --git a/Exhorizon-chopin-20260428-0132.zip b/Exhorizon-chopin-20260428-0227.zip
+similarity index 65%
+rename from Exhorizon-chopin-20260428-0132.zip
+rename to Exhorizon-chopin-20260428-0227.zip
+index f51ced31aa79..9e6de2941363 100644
+Binary files a/Exhorizon-chopin-20260428-0132.zip and b/Exhorizon-chopin-20260428-0227.zip differ
+diff --git a/drivers/misc/mediatek/base/power/ppm_v3/src/mach/mt6893/mtk_ppm_cobra_algo.c b/drivers/misc/mediatek/base/power/ppm_v3/src/mach/mt6893/mtk_ppm_cobra_algo.c
+index a063f5274a0e..6c97d13356ba 100644
+--- a/drivers/misc/mediatek/base/power/ppm_v3/src/mach/mt6893/mtk_ppm_cobra_algo.c
++++ b/drivers/misc/mediatek/base/power/ppm_v3/src/mach/mt6893/mtk_ppm_cobra_algo.c
+@@ -433,13 +433,11 @@ void ppm_cobra_update_limit(void *user_req)
+ 	if (power_budget >= ppm_get_max_pwr_idx())
+ 		return;
+ 
+-	ppm_dbg(COBRA, "[PREV]Core_Limit=%d%d%d, policy_limit=%d%d%d\n",
++	ppm_dbg(COBRA, "Core_limit=(%d/%d), req->limit.max_cpu_core=(%d/%d)\n",
+ 			Core_limit[PPM_CLUSTER_L],
+ 			Core_limit[PPM_CLUSTER_B],
+-			Core_limit[PPM_CLUSTER_BB],
+ 			req->limit[PPM_CLUSTER_L].max_cpu_core,
+-			req->limit[PPM_CLUSTER_B].max_cpu_core,
+-			req->limit[PPM_CLUSTER_BB].max_cpu_core);
++			req->limit[PPM_CLUSTER_B].max_cpu_core);
+ 
+ 	for_each_ppm_clusters(i) {
+ 		ppm_get_cl_cpus(&cluster_cpu, i);
+@@ -519,21 +517,6 @@ void ppm_cobra_update_limit(void *user_req)
+ 			int ChoosenCl = -1, MaxEff = 0, ChoosenPwr = 0;
+ 			int target_delta_pwr, target_delta_eff;
+ 
+-/* give remaining power to BB-cluster if B-cluster opp is 0 */
+-			if (opp[PPM_CLUSTER_B] == 0 && ACT_CORE(BB) == 0) {
+-				target_delta_pwr =
+-					get_delta_pwr(
+-						PPM_CLUSTER_BB,
+-						1,
+-						COBRA_OPP_NUM-1);
+-
+-				if (delta_power >= target_delta_pwr) {
+-					ACT_CORE(BB) = 1;
+-					req->limit[PPM_CLUSTER_BB].max_cpu_core = ACT_CORE(BB);
+-					delta_power -= target_delta_pwr;
+-					opp[PPM_CLUSTER_BB] = COBRA_OPP_NUM - 1;
+-				}
+-			}
+ 
+ /* give remaining power to B-cluster if L-cluster opp is 0 */
+ 			if (opp[PPM_CLUSTER_L] == 0 && ACT_CORE(B) == 0) {
+@@ -550,28 +533,6 @@ void ppm_cobra_update_limit(void *user_req)
+ 				}
+ 			}
+ 
+-			/* BB-cluster */
+-			if (ACT_CORE(BB) > 0 && opp[PPM_CLUSTER_BB] > 0) {
+-				target_delta_pwr =
+-					get_delta_pwr(
+-						PPM_CLUSTER_BB,
+-						ACT_CORE(BB),
+-						opp[PPM_CLUSTER_BB]-1);
+-				if (delta_power >= target_delta_pwr) {
+-					if (is_perf_fist)
+-						MaxEff = get_perf(
+-							PPM_CLUSTER_BB,
+-							ACT_CORE(BB),
+-							opp[PPM_CLUSTER_BB]-1);
+-					else
+-						MaxEff = get_delta_eff(
+-							PPM_CLUSTER_BB,
+-							ACT_CORE(BB),
+-							opp[PPM_CLUSTER_BB]-1);
+-					ChoosenCl = PPM_CLUSTER_BB;
+-					ChoosenPwr = target_delta_pwr;
+-				}
+-			}
+ 
+ 			/* B-cluster */
+ 			if (ACT_CORE(B) > 0 && opp[PPM_CLUSTER_B] > 0) {
+@@ -742,26 +703,6 @@ void ppm_cobra_update_limit(void *user_req)
+ 			int ChoosenPwr = 0;
+ 			int target_delta_eff;
+ 
+-			/* BB-cluster */
+-			if (ACT_CORE(BB) > 0
+-			&& opp[PPM_CLUSTER_BB] < PPM_COBRA_MAX_FREQ_IDX) {
+-				if (is_perf_fist)
+-					MinEff =
+-					get_perf(PPM_CLUSTER_BB,
+-						ACT_CORE(BB),
+-						opp[PPM_CLUSTER_BB]);
+-				else
+-					MinEff =
+-					get_delta_eff(PPM_CLUSTER_BB,
+-						ACT_CORE(BB),
+-						opp[PPM_CLUSTER_BB]);
+-
+-				ChoosenCl = PPM_CLUSTER_BB;
+-				ChoosenPwr =
+-					get_delta_pwr(PPM_CLUSTER_BB,
+-						ACT_CORE(BB),
+-						opp[PPM_CLUSTER_BB]);
+-			}
+ 
+ 			/* B-cluster */
+ 			if (ACT_CORE(B) > 0
+@@ -819,10 +760,10 @@ void ppm_cobra_update_limit(void *user_req)
+ 
+ 			if (ChoosenCl == -1) {
+ 				ppm_err("No lower OPP!(bgt/delta/cur)= ");
+-				ppm_err("(%d/%d/%d),(opp/act)=(%d,%d,%d/%d%d%d)\n",
++				ppm_err("(%d/%d/%d),(opp/act)=(%d,%d/%d%d)\n",
+ 				power_budget, delta_power, curr_power,
+-				opp[PPM_CLUSTER_L], opp[PPM_CLUSTER_B], opp[PPM_CLUSTER_BB],
+-				ACT_CORE(L), ACT_CORE(B),  ACT_CORE(BB));
++				opp[PPM_CLUSTER_L], opp[PPM_CLUSTER_B],
++				ACT_CORE(L), ACT_CORE(B));
+ 
+ 				break;
+ 			}
+@@ -997,7 +938,7 @@ void ppm_cobra_dump_tbl(struct seq_file *m)
+ {
+ #if 1
+ 	struct ppm_cluster_status cl_status[NR_PPM_CLUSTERS];
+-	int i, j, k;
++	int i, j;
+ 	int power;
+ 
+ 	seq_puts(m, "\n========================================================\n");
+@@ -1010,24 +951,19 @@ void ppm_cobra_dump_tbl(struct seq_file *m)
+ 
+ 	for (i = 0; i < DVFS_OPP_NUM; i++) {
+ 		for (j = 0; j < DVFS_OPP_NUM; j++) {
+-			for (k = 0; k < DVFS_OPP_NUM; k++) {
+-				cl_status[PPM_CLUSTER_L].freq_idx = i;
+-				cl_status[PPM_CLUSTER_B].freq_idx = j;
+-				cl_status[PPM_CLUSTER_BB].freq_idx = k;
+-
+-				power = ppm_find_pwr_idx(cl_status);
+-				if (power) {
+-					seq_printf(m,
+-					"(%d, %2d, %d, %2d, %d, %2d) = %4d\n",
+-					cl_status[PPM_CLUSTER_L].core_num,
+-					cl_status[PPM_CLUSTER_L].freq_idx,
+-					cl_status[PPM_CLUSTER_B].core_num,
+-					cl_status[PPM_CLUSTER_B].freq_idx,
+-					cl_status[PPM_CLUSTER_BB].core_num,
+-					cl_status[PPM_CLUSTER_BB].freq_idx,
+-					power
+-					);
+-				}
++			cl_status[PPM_CLUSTER_L].freq_idx = i;
++			cl_status[PPM_CLUSTER_B].freq_idx = j;
++
++			power = ppm_find_pwr_idx(cl_status);
++			if (power) {
++				seq_printf(m,
++				"(%d, %2d, %d, %2d) = %4d\n",
++				cl_status[PPM_CLUSTER_L].core_num,
++				cl_status[PPM_CLUSTER_L].freq_idx,
++				cl_status[PPM_CLUSTER_B].core_num,
++				cl_status[PPM_CLUSTER_B].freq_idx,
++				power
++				);
+ 			}
+ 		}
+ 	}
+@@ -1071,45 +1007,37 @@ void ppm_cobra_dump_tbl(struct seq_file *m)
+ static unsigned int get_limit_opp_and_budget(void)
+ {
+ 	unsigned int power = 0;
+-	unsigned int i, j, k, l, idx, core;
+-	unsigned int i_max, j_max, l_max;
++	unsigned int i, j, k, idx, core;
++	unsigned int i_max, j_max;
+ 
+ 	i_max = get_cluster_min_cpufreq_idx(PPM_CLUSTER_L);
+ 	j_max = get_cluster_min_cpufreq_idx(PPM_CLUSTER_B);
+-	l_max = get_cluster_min_cpufreq_idx(PPM_CLUSTER_BB);
+ 
+ 	for (i = 0; i <= i_max; i++) {
+ 		c_data[PPM_CLUSTER_L].opp = i;
+ 		for (j = 0; j <= j_max; j++) {
+ 			c_data[PPM_CLUSTER_B].opp = j;
+-			for (l = 0; l <= l_max; l++) {
+-				c_data[PPM_CLUSTER_BB].opp = l;
+-				for_each_ppm_clusters(k) {
+-					core = c_data[k].core;
+-					if (!core)
+-						continue;
+-
+-					idx = get_idx_in_pwr_tbl(k) + core - 1;
+-
+-					if (idx >= TOTAL_CORE_NUM ||
+-						i >= DVFS_OPP_NUM ||
+-						j >= DVFS_OPP_NUM ||
+-						l >= DVFS_OPP_NUM) {
+-						ppm_info(
+-					"[%p] idx: %d i:%d j:%d l:%d core:%d\n",
+-					cobra_tbl, idx, i, j, l, core);
+-						return 0;
+-					}
+-					if (k == PPM_CLUSTER_L)
+-						power +=
+-						pwr_tbl[idx][i].power_idx;
+-					else if (k == PPM_CLUSTER_B)
+-						power +=
+-						pwr_tbl[idx][j].power_idx;
+-					else
+-						power +=
+-						pwr_tbl[idx][l].power_idx;
++			for_each_ppm_clusters(k) {
++				core = c_data[k].core;
++				if (!core)
++					continue;
++
++				idx = get_idx_in_pwr_tbl(k) + core - 1;
++
++				if (idx >= TOTAL_CORE_NUM ||
++					i >= DVFS_OPP_NUM ||
++					j >= DVFS_OPP_NUM) {
++					ppm_info(
++				"[%p] idx: %d i:%d j:%d core:%d\n",
++				cobra_tbl, idx, i, j, core);
++					return 0;
+ 				}
++				if (k == PPM_CLUSTER_L)
++					power +=
++					pwr_tbl[idx][i].power_idx;
++				else
++					power +=
++					pwr_tbl[idx][j].power_idx;
+ 				if (power <= cobra_lookup_data.budget)
+ 					return power;
+ 
+@@ -1123,7 +1051,7 @@ static unsigned int get_limit_opp_and_budget(void)
+ 
+ static void ppm_cobra_lookup_by_budget(struct seq_file *m)
+ {
+-	int i, j, k;
++	int i, j;
+ 	unsigned int power;
+ 
+ 	seq_puts(m, "\n========================================================\n");
+@@ -1133,27 +1061,22 @@ static void ppm_cobra_lookup_by_budget(struct seq_file *m)
+ 	seq_printf(m, "Input budget = %d\n\n", cobra_lookup_data.budget);
+ 
+ #define get_max_core get_cluster_max_cpu_core
+-	for (k = get_max_core(PPM_CLUSTER_BB); k >= 0; k--) {
+-		for (i = get_max_core(PPM_CLUSTER_B); i >= 0; i--) {
+-			for (j = get_max_core(PPM_CLUSTER_L); j >= 0; j--) {
+-				if (!i && !j && !k)
+-					continue;
+-
+-				c_data[PPM_CLUSTER_L].core = j;
+-				c_data[PPM_CLUSTER_B].core = i;
+-				c_data[PPM_CLUSTER_BB].core = k;
+-				power = get_limit_opp_and_budget();
+-
+-				if (power) {
+-					seq_printf(m, "(%d, %2d, %d, %2d, %d, %2d) = %4d\n",
+-					j,
+-					c_data[PPM_CLUSTER_L].opp,
+-					i,
+-					c_data[PPM_CLUSTER_B].opp,
+-					k,
+-					c_data[PPM_CLUSTER_BB].opp,
+-					power);
+-				}
++	for (i = get_max_core(PPM_CLUSTER_B); i >= 0; i--) {
++		for (j = get_max_core(PPM_CLUSTER_L); j >= 0; j--) {
++			if (!i && !j)
++				continue;
++
++			c_data[PPM_CLUSTER_L].core = j;
++			c_data[PPM_CLUSTER_B].core = i;
++			power = get_limit_opp_and_budget();
++
++			if (power) {
++				seq_printf(m, "(%d, %2d, %d, %2d) = %4d\n",
++				j,
++				c_data[PPM_CLUSTER_L].opp,
++				i,
++				c_data[PPM_CLUSTER_B].opp,
++				power);
+ 			}
+ 		}
+ 	}
+diff --git a/drivers/misc/mediatek/base/power/ppm_v3/src/mach/mt6893/mtk_ppm_platform.h b/drivers/misc/mediatek/base/power/ppm_v3/src/mach/mt6893/mtk_ppm_platform.h
+index 1daae21bdae8..c20cf526bad5 100644
+--- a/drivers/misc/mediatek/base/power/ppm_v3/src/mach/mt6893/mtk_ppm_platform.h
++++ b/drivers/misc/mediatek/base/power/ppm_v3/src/mach/mt6893/mtk_ppm_platform.h
+@@ -155,11 +155,11 @@ static inline int ppm_get_nr_clusters(void) { return NR_PPM_CLUSTERS; }
+ static inline void ppm_get_cl_cpus(struct cpumask *cpu_mask, unsigned int cid)
+ {
+ 	if (cid == 0) {
+-		cpumask_setall(cpu_mask);
+-		cpumask_clear_cpu(4, cpu_mask);
+-		cpumask_clear_cpu(5, cpu_mask);
+-		cpumask_clear_cpu(6, cpu_mask);
+-		cpumask_clear_cpu(7, cpu_mask);
++		cpumask_clear(cpu_mask);
++		cpumask_set_cpu(0, cpu_mask);
++		cpumask_set_cpu(1, cpu_mask);
++		cpumask_set_cpu(2, cpu_mask);
++		cpumask_set_cpu(3, cpu_mask);
+ 	} else if (cid == 1) {
+ 		cpumask_clear(cpu_mask);
+ 		cpumask_set_cpu(4, cpu_mask);
+diff --git a/report_kernel_336_after.txt b/report_kernel_336_after.txt
+new file mode 100644
+index 000000000000..15876de05c1e
+--- /dev/null
++++ b/report_kernel_336_after.txt
+@@ -0,0 +1,445 @@
++--- KERNEL INFO ---
++Linux localhost 4.14.186--9-g690101101069 #1 SMP PREEMPT Tue Aug  1 13:54:38 UTC 2023 aarch64 Toybox
++Linux version 4.14.336-Exhorizon-Chopin-OSS-g0bbaf3e4f346-dirty (vettel@Ferrari) (Proton clang version 15.0.0 (https://github.com/llvm/llvm-project f4037650e0c74454e12b4eabd94fec06d678505f), LLD 15.0.0) #1 SMP PREEMPT Tue Apr 28 02:30:56 WIB 2026
++
++
++
++================================================================
++ CPU TOPOLOGY & CAPACITY
++================================================================
++  cpu0 : Capacity=241
++  cpu1 : Capacity=241
++  cpu2 : Capacity=241
++  cpu3 : Capacity=241
++  cpu4 : Capacity=917
++  cpu5 : Capacity=917
++  cpu6 : Capacity=917
++  cpu7 : Capacity=917
++
++
++================================================================
++ SCHEDULER & EAS TUNING
++================================================================
++--- SchedTune Boost (Krusial untuk Game) ---
++  top-app         : 0
++  foreground      : 0
++  background      : 0
++
++--- Sched Features ---
++
++--- EAS & Scheduler Nodes ---
++  sched_latency_ns               : 10000000
++  sched_min_granularity_ns       : 3000000
++
++
++================================================================
++ PPM (Power Policy Manager)
++================================================================
++--- Policy Status ---
++[0] PPM_POLICY_PTPOD: enabled
++[1] PPM_POLICY_UT: enabled
++[2] PPM_POLICY_FORCE_LIMIT: enabled
++[3] PPM_POLICY_PWR_THRO: enabled
++[4] PPM_POLICY_THERMAL: enabled
++[9] PPM_POLICY_SYS_BOOST: enabled
++[6] PPM_POLICY_HARD_USER_LIMIT: enabled
++[7] PPM_POLICY_USER_LIMIT: enabled
++[8] PPM_POLICY_LCM_OFF: disabled
++
++Usage: echo <idx> <1/0> > /proc/ppm/policy_status
++
++
++--- Cluster DVFS Tables ---
++Cluster 0: 2000000 1800000 1725000 1625000 1525000 1450000 1350000 1250000 1075000 1000000 925000 850000 750000 675000 600000 500000 
++Cluster 1: 2600000 2507000 2354000 2200000 1985000 1855000 1740000 1624000 1537000 1451000 1335000 1162000 1046000 902000 700000 437000 
++Cluster 2: 2600000 2529000 2410000 2292000 2127000 2032000 1938000 1820000 1745000 1632000 1482000 1370000 1258000 1108000 921000 659000 
++
++--- PPM Mode & Limits ---
++0: min_freq_idx = -1, max_freq_idx = -1
++1: min_freq_idx = -1, max_freq_idx = -1
++2: min_freq_idx = -1, max_freq_idx = -1
++
++
++================================================================
++ SCHEDUTIL TUNING (Governor)
++================================================================
++Policy 0:
++  down_rate_limit_us        : 1000
++  up_rate_limit_us          : 1000
++Policy 4:
++  down_rate_limit_us        : 1000
++  up_rate_limit_us          : 1000
++Policy 7:
++  down_rate_limit_us        : 1000
++  up_rate_limit_us          : 1000
++
++
++================================================================
++ MTK VOLTAGES (Krusial)
++================================================================
++Cluster B:
++  Freq   : 1984000 KHz
++  Volt   : Vproc: 900000 uV
++Vsram: 1000000 uV
++  OppIdx : [MT_CPU_DVFS_B/7]
++cpufreq_oppidx = 0
++	0  (2600000, 90000)
++	1  (2529000, 88750)
++	2  (2410000, 85625)
++	3  (2292000, 82500)
++	4  (2127000, 78125)
++	5  (2032000, 75625)
++	6  (1938000, 72500)
++	7  (1820000, 68750)
++	8  (1745000, 68125)
++	9  (1632000, 66875)
++	10 (1482000, 65000)
++	11 (1370000, 63750)
++	12 (1258000, 62500)
++	13 (1108000, 60625)
++	14 (921000, 58750)
++	15 (659000, 55000)
++Cluster L:
++  Freq   : 1984000 KHz
++  Volt   : Vproc: 675000 uV
++Vsram: 775000 uV
++  OppIdx : [MT_CPU_DVFS_L/4]
++cpufreq_oppidx = 9
++	0  (2600000, 90000)
++	1  (2507000, 88125)
++	2  (2354000, 84375)
++	3  (2200000, 80625)
++	4  (1985000, 75625)
++	5  (1855000, 72500)
++	6  (1740000, 69375)
++	7  (1624000, 68125)
++	8  (1537000, 67500)
++	9  (1451000, 65625)
++	10 (1335000, 64375)
++	11 (1162000, 61875)
++	12 (1046000, 60625)
++	13 (902000, 58750)
++	14 (700000, 55625)
++	15 (437000, 55625)
++Cluster CCI:
++  Freq   : 1699000 KHz
++  Volt   : Vproc: 875000 uV
++Vsram: 975000 uV
++  OppIdx : [MT_CPU_DVFS_CCI/10]
++cpufreq_oppidx = 0
++	0  (1700000, 87500)
++	1  (1540000, 85000)
++	2  (1400000, 81875)
++	3  (1322000, 78750)
++	4  (1288000, 76875)
++	5  (1255000, 75000)
++	6  (1182000, 71875)
++	7  (1092000, 70000)
++	8  (1021000, 68125)
++	9  (949000, 66250)
++	10 (895000, 65000)
++	11 (824000, 63125)
++	12 (770000, 61875)
++	13 (716000, 60625)
++	14 (627000, 58125)
++	15 (520000, 55000)
++Cluster LL:
++  Freq   : 924500 KHz
++  Volt   : Vproc: 875000 uV
++Vsram: 975000 uV
++  OppIdx : [MT_CPU_DVFS_LL/0]
++cpufreq_oppidx = 12
++	0  (2000000, 81875)
++	1  (1800000, 77500)
++	2  (1725000, 75625)
++	3  (1625000, 73125)
++	4  (1525000, 70625)
++	5  (1450000, 69375)
++	6  (1350000, 68125)
++	7  (1250000, 66250)
++	8  (1075000, 63125)
++	9  (1000000, 61875)
++	10 (925000, 60625)
++	11 (850000, 59375)
++	12 (750000, 57500)
++	13 (675000, 56250)
++	14 (600000, 55000)
++	15 (500000, 55000)
++
++
++================================================================
++ EEM / AVS (Detailed Status)
++================================================================
++--- EEM_DET_B ---
++bank = 2, feature:15, T(59590) - (90000, 88750, 85625, 82500, 78125, 75625, 72500, 68750, 68125, 66875, 65000, 63750, 62500, 60625, 58750, 55000) - (130, 127, 121, 115, 107, 102, 97, 91, 88, 82, 75, 69, 63, 56, 47, 33)
++88750
++[0],eem = [50], pmic = [90], volt = [90000]
++[1],eem = [4e], pmic = [8e], volt = [88750]
++[2],eem = [49], pmic = [89], volt = [85625]
++[3],eem = [44], pmic = [84], volt = [82500]
++[4],eem = [3d], pmic = [7d], volt = [78125]
++[5],eem = [39], pmic = [79], volt = [75625]
++[6],eem = [34], pmic = [74], volt = [72500]
++[7],eem = [2e], pmic = [6e], volt = [68750]
++[8],eem = [2d], pmic = [6d], volt = [68125]
++[9],eem = [2b], pmic = [6b], volt = [66875]
++[10],eem = [28], pmic = [68], volt = [65000]
++[11],eem = [26], pmic = [66], volt = [63750]
++[12],eem = [24], pmic = [64], volt = [62500]
++[13],eem = [21], pmic = [61], volt = [60625]
++[14],eem = [1e], pmic = [5e], volt = [58750]
++[15],eem = [18], pmic = [58], volt = [55000]
++isTempInv:2, eem_aging:0
++--- EEM_DET_L ---
++bank = 0, feature:11, T(62580) - (81875, 77500, 75625, 73125, 70625, 69375, 68125, 66250, 63125, 61875, 60625, 59375, 57500, 56250, 55000, 55000) - (200, 180, 173, 163, 153, 145, 135, 125, 108, 100, 93, 85, 75, 68, 60, 50)
++87500
++[0],eem = [43], pmic = [83], volt = [81875]
++[1],eem = [3c], pmic = [7c], volt = [77500]
++[2],eem = [39], pmic = [79], volt = [75625]
++[3],eem = [35], pmic = [75], volt = [73125]
++[4],eem = [31], pmic = [71], volt = [70625]
++[5],eem = [2f], pmic = [6f], volt = [69375]
++[6],eem = [2d], pmic = [6d], volt = [68125]
++[7],eem = [2a], pmic = [6a], volt = [66250]
++[8],eem = [25], pmic = [65], volt = [63125]
++[9],eem = [23], pmic = [63], volt = [61875]
++[10],eem = [21], pmic = [61], volt = [60625]
++[11],eem = [1f], pmic = [5f], volt = [59375]
++[12],eem = [1c], pmic = [5c], volt = [57500]
++[13],eem = [1a], pmic = [5a], volt = [56250]
++[14],eem = [18], pmic = [58], volt = [55000]
++[15],eem = [15], pmic = [58], volt = [55000]
++isTempInv:2, eem_aging:0
++--- EEM_DET_BL ---
++bank = 1, feature:15, T(60145) - (90000, 88125, 84375, 80625, 75625, 72500, 69375, 68125, 67500, 65625, 64375, 61875, 60625, 58750, 55625, 55625) - (100, 97, 91, 85, 77, 72, 67, 63, 60, 56, 52, 45, 41, 35, 27, 17)
++88750
++[0],eem = [50], pmic = [90], volt = [90000]
++[1],eem = [4d], pmic = [8d], volt = [88125]
++[2],eem = [47], pmic = [87], volt = [84375]
++[3],eem = [41], pmic = [81], volt = [80625]
++[4],eem = [39], pmic = [79], volt = [75625]
++[5],eem = [34], pmic = [74], volt = [72500]
++[6],eem = [2f], pmic = [6f], volt = [69375]
++[7],eem = [2d], pmic = [6d], volt = [68125]
++[8],eem = [2c], pmic = [6c], volt = [67500]
++[9],eem = [29], pmic = [69], volt = [65625]
++[10],eem = [27], pmic = [67], volt = [64375]
++[11],eem = [23], pmic = [63], volt = [61875]
++[12],eem = [21], pmic = [61], volt = [60625]
++[13],eem = [1e], pmic = [5e], volt = [58750]
++[14],eem = [19], pmic = [59], volt = [55625]
++[15],eem = [19], pmic = [59], volt = [55625]
++isTempInv:2, eem_aging:0
++--- EEM_DET_CCI ---
++bank = 3, feature:15, T(61748) - (87500, 85000, 81875, 78750, 76875, 75000, 71875, 70000, 68125, 66250, 65000, 63125, 61875, 60625, 58125, 55000) - (170, 154, 140, 133, 129, 126, 119, 110, 103, 95, 90, 83, 77, 72, 63, 52)
++87500
++[0],eem = [4c], pmic = [8c], volt = [87500]
++[1],eem = [48], pmic = [88], volt = [85000]
++[2],eem = [43], pmic = [83], volt = [81875]
++[3],eem = [3e], pmic = [7e], volt = [78750]
++[4],eem = [3b], pmic = [7b], volt = [76875]
++[5],eem = [38], pmic = [78], volt = [75000]
++[6],eem = [33], pmic = [73], volt = [71875]
++[7],eem = [30], pmic = [70], volt = [70000]
++[8],eem = [2d], pmic = [6d], volt = [68125]
++[9],eem = [2a], pmic = [6a], volt = [66250]
++[10],eem = [28], pmic = [68], volt = [65000]
++[11],eem = [25], pmic = [65], volt = [63125]
++[12],eem = [23], pmic = [63], volt = [61875]
++[13],eem = [21], pmic = [61], volt = [60625]
++[14],eem = [1d], pmic = [5d], volt = [58125]
++[15],eem = [18], pmic = [58], volt = [55000]
++isTempInv:2, eem_aging:0
++Margins: [CPU][EEM][CPU_BIG][HIGH] 1:8, 2:0, 3:3, 5:-1
++[CPU][EEM][CPU_BIG][MID] 1:8, 2:0, 3:3, 5:-1
++[CPU][EEM][CPU_L][HIGH] 1:8, 2:0, 3:3, 5:-1
++[CPU][EEM][CPU_CCI][HIGH] 1:8, 2:0, 3:3, 5:-1
++
++
++================================================================
++ THERMAL ZONES & COOLING
++================================================================
++--- Thermal Zones ---
++  mtktsbattery         : 37°C
++  mtktsAP              : 44°C
++  mtktswmt             : 46°C
++  tzimgs0              : -127°C
++  tzimgs1              : -127°C
++  tzimgs2              : -127°C
++  tzimgs3              : -127°C
++  tzimgs4              : -127°C
++  tzimgs5              : -127°C
++  tzimgs6              : -127°C
++  tzimgs7              : -127°C
++  tzimgs8              : -127°C
++  mtktsbtsmdpa         : 44°C
++  tzimgs9              : -127°C
++  tzimgs10             : -127°C
++  tzimgs11             : -127°C
++  tzimgs12             : -127°C
++  battery              : 37°C
++  bms                  : 37°C
++  mtktscharger         : 46°C
++  conn_therm           : 33°C
++  mtktsbtsnrpa         : 41°C
++  mtktscpu             : 60°C
++  mtktspa              : -127°C
++  mtktspmic            : 46°C
++  charger_therm        : 34°C
++  lcd_therm            : 26°C
++  quiet_therm          : 40°C
++
++--- Cooling Devices Status ---
++  mtk-cl-shutdown02         : cur=0 / max=1
++  mtk-cl-shutdown01         : cur=0 / max=1
++  mtk-cl-kshutdown02        : cur=0 / max=1
++  cpu10                     : cur=0 / max=1
++  cpu11                     : cur=0 / max=1
++  cpu12                     : cur=0 / max=1
++  cpu13                     : cur=0 / max=1
++  cpu14                     : cur=0 / max=1
++  cpu15                     : cur=0 / max=1
++  cpu16                     : cur=0 / max=1
++  cpu17                     : cur=0 / max=1
++  cpu18                     : cur=0 / max=1
++  cpu19                     : cur=0 / max=1
++  mtk-cl-kshutdown01        : cur=0 / max=1
++  cpu20                     : cur=0 / max=1
++  cpu21                     : cur=0 / max=1
++  cpu22                     : cur=0 / max=1
++  cpu23                     : cur=0 / max=1
++  cpu24                     : cur=0 / max=1
++  cpu25                     : cur=0 / max=1
++  cpu26                     : cur=0 / max=1
++  cpu27                     : cur=0 / max=1
++  cpu28                     : cur=0 / max=1
++  cpu29                     : cur=0 / max=1
++  mtk-cl-kshutdown00        : cur=0 / max=1
++  cpu30                     : cur=0 / max=1
++  cpu31                     : cur=0 / max=1
++  cpu32                     : cur=0 / max=1
++  cpu33                     : cur=0 / max=1
++  mtktscpu-sysrst           : cur=0 / max=1
++  mtktsbuck-sysrst          : cur=0 / max=1
++  mtktsAP-sysrst            : cur=0 / max=1
++  mtkclVR_FPS               : cur=0 / max=1
++  mt6359vcore-sysrst        : cur=0 / max=1
++  mt6359vproc-sysrst        : cur=0 / max=1
++  mtk-cl-cam02              : cur=0 / max=1
++  mt6359vgpu-sysrst         : cur=0 / max=1
++  mt6359tsx-sysrst          : cur=0 / max=1
++  mt6359dcxo-sysrst         : cur=0 / max=1
++  battery                   : cur=9 / max=16
++  brightness0-clone         : cur=0 / max=8191
++  mtktscharger-sysrst       : cur=0 / max=1
++  mtk-cl-cam01              : cur=0 / max=1
++  mtk-cl-cam00              : cur=0 / max=1
++  mtk-cl-cam-urgent         : cur=0 / max=1
++  mtktsbattery-sysrst       : cur=0 / max=1
++  mtktspa-sysrst            : cur=0 / max=1
++  mtktspmic-sysrst          : cur=0 / max=1
++  mtk-cl-shutdown00         : cur=0 / max=1
++  mtktswmt-sysrst           : cur=0 / max=1
++  mtktswmt-pa1              : cur=0 / max=1
++  mtktswmt-pa2              : cur=0 / max=1
++  clnothing1                : cur=0 / max=1
++  clnothing2                : cur=0 / max=1
++  clnothing3                : cur=0 / max=1
++  clnothing4                : cur=0 / max=1
++  clnothing5                : cur=0 / max=1
++  clnothing6                : cur=0 / max=1
++  clnothing7                : cur=0 / max=1
++  mtk-cl-backlight          : cur=100 / max=100
++  clnothing8                : cur=0 / max=1
++  clnothing9                : cur=0 / max=1
++  clnothing10               : cur=0 / max=1
++  clnothing11               : cur=0 / max=1
++  clnothing12               : cur=0 / max=1
++  clnothing13               : cur=0 / max=1
++  clnothing14               : cur=0 / max=1
++  clnothing15               : cur=0 / max=1
++  clnothing16               : cur=0 / max=1
++  clnothing17               : cur=0 / max=1
++  mtk-cl-flashlight         : cur=34 / max=34
++  tzimgs0-sysrst            : cur=0 / max=1
++  tzimgs1-sysrst            : cur=0 / max=1
++  tzimgs2-sysrst            : cur=0 / max=1
++  tzimgs3-sysrst            : cur=0 / max=1
++  tzimgs4-sysrst            : cur=0 / max=1
++  tzimgs5-sysrst            : cur=0 / max=1
++  tzimgs6-sysrst            : cur=0 / max=1
++  tzimgs7-sysrst            : cur=0 / max=1
++  tzimgs8-sysrst            : cur=0 / max=1
++  tzimgs9-sysrst            : cur=0 / max=1
++  mtk-cl-kshutdown07        : cur=0 / max=1
++  tzimgs10-sysrst           : cur=0 / max=1
++  tzimgs11-sysrst           : cur=0 / max=1
++  tzimgs12-sysrst           : cur=0 / max=1
++  mtk-cl-scg-off            : cur=0 / max=1
++  mtk-cl-mutt00             : cur=0 / max=1
++  mtk-cl-mutt01             : cur=0 / max=1
++  mtk-cl-mutt02             : cur=0 / max=1
++  mtk-cl-mutt03             : cur=0 / max=1
++  mtk-cl-mutt04             : cur=0 / max=1
++  mtk-cl-mutt05             : cur=0 / max=1
++  mtk-cl-kshutdown06        : cur=0 / max=1
++  mtk-cl-mutt06             : cur=0 / max=1
++  mtk-cl-mutt07             : cur=0 / max=1
++  mtk-cl-tx-pwr00           : cur=0 / max=1
++  mtk-cl-tx-pwr01           : cur=0 / max=1
++  mtk-cl-tx-pwr02           : cur=0 / max=1
++  mtk-cl-noIMS              : cur=0 / max=1
++  mtk-cl-mdoff              : cur=0 / max=1
++  mtk-cl-adp-mutt           : cur=0 / max=1
++  mtk-cl-mutt00-nr          : cur=0 / max=1
++  mtk-cl-mutt01-nr          : cur=0 / max=1
++  mtk-cl-kshutdown05        : cur=0 / max=1
++  mtk-cl-mutt02-nr          : cur=0 / max=1
++  mtk-cl-mutt03-nr          : cur=0 / max=1
++  mtk-cl-mutt04-nr          : cur=0 / max=1
++  mtk-cl-mutt05-nr          : cur=0 / max=1
++  mtk-cl-mutt06-nr          : cur=0 / max=1
++  mtk-cl-mutt07-nr          : cur=0 / max=1
++  mtk-cl-tx-pwr00-nr        : cur=0 / max=1
++  mtk-cl-tx-pwr01-nr        : cur=0 / max=1
++  mtk-cl-tx-pwr02-nr        : cur=0 / max=1
++  mtk-cl-noIMS-nr           : cur=0 / max=1
++  mtk-cl-kshutdown04        : cur=0 / max=1
++  mtk-cl-mdoff-nr           : cur=0 / max=1
++  mtk-cl-adp-mutt-nr        : cur=0 / max=1
++  mtk-cl-bcct02             : cur=0 / max=1
++  mtk-cl-bcct01             : cur=0 / max=1
++  mtk-cl-bcct00             : cur=0 / max=1
++  abcct                     : cur=0 / max=1
++  abcct_lcmoff              : cur=0 / max=1
++  cpu_adaptive_0            : cur=1 / max=1
++  cpu_adaptive_1            : cur=0 / max=1
++  cpu_adaptive_2            : cur=0 / max=1
++  mtk-cl-kshutdown03        : cur=0 / max=1
++  cpu00                     : cur=0 / max=1
++  cpu01                     : cur=0 / max=1
++  cpu02                     : cur=0 / max=1
++  cpu03                     : cur=0 / max=1
++  cpu04                     : cur=0 / max=1
++  cpu05                     : cur=0 / max=1
++  cpu06                     : cur=0 / max=1
++  cpu07                     : cur=0 / max=1
++  cpu08                     : cur=0 / max=1
++  cpu09                     : cur=0 / max=1
++
++
++================================================================
++ GPU FREQUENCY & TUNING
++================================================================
++idx: 40, freq: 350000, vgpu: 55000, vsram_gpu: 75000
++(real) freq: 0, freq: 350000, vgpu: -2, vsram_gpu: 50000
++
++
++================================================================
++ SSPM / MCUPM STATUS
++================================================================
++
++
++================================================================
++ DONE ANALYSIS
++================================================================
+
+commit 28157f4f63bef9ee0921f1ba632cf76fd5044035
+Author: firenza <masudtxg@gmail.com>
+Date:   Tue Apr 28 03:15:22 2026 +0700
+
+    perf: optimize EAS boost defaults and adjust schedplus throttle settings
+
+diff --git a/drivers/misc/mediatek/performance/boost_ctrl/eas_ctrl/eas_ctrl.c b/drivers/misc/mediatek/performance/boost_ctrl/eas_ctrl/eas_ctrl.c
+index fb53faace960..c8a5ea943752 100644
+--- a/drivers/misc/mediatek/performance/boost_ctrl/eas_ctrl/eas_ctrl.c
++++ b/drivers/misc/mediatek/performance/boost_ctrl/eas_ctrl/eas_ctrl.c
+@@ -1580,6 +1580,17 @@ int eas_ctrl_init(struct proc_dir_entry *parent)
+ 		prefer_idle[i] = 0;
+ 		debug_prefer_idle[i] = -1;
+ 	}
++
++	/* Optimized Defaults for Chopin */
++	boost_value[CGROUP_TA][EAS_KIR_PERF] = 10;   /* Top-app boost */
++	current_boost_value[CGROUP_TA] = 10;
++	prefer_idle[CGROUP_TA] = 1;                  /* UI latency reduction */
++
++	boost_value[CGROUP_FG][EAS_KIR_PERF] = 5;    /* Foreground boost */
++	current_boost_value[CGROUP_FG] = 5;
++
++	boost_value[CGROUP_BG][EAS_KIR_PERF] = -10;  /* Background restriction */
++	current_boost_value[CGROUP_BG] = -10;
+ #endif
+ 
+ #if defined(CONFIG_UCLAMP_TASK_GROUP) && defined(CONFIG_SCHED_TUNE)
+@@ -1595,8 +1606,8 @@ int eas_ctrl_init(struct proc_dir_entry *parent)
+ 	perf_sched_big_task_rotation = 0;
+ 	perf_sched_stune_task_thresh = -1;
+ 
+-	default_schedplus_down_throttle_ns = 1000000;
+-	default_schedplus_up_throttle_ns = 1000000;
++	default_schedplus_down_throttle_ns = 10000000;
++	default_schedplus_up_throttle_ns = 500000;
+ 	default_schedplus_sync_flag = 1;
+ 	cur_schedplus_down_throttle_ns = -1;
+ 	cur_schedplus_up_throttle_ns = -1;
+diff --git a/report_kernel_336_after.txt b/report_kernel_336_after.txt
+deleted file mode 100644
+index 15876de05c1e..000000000000
+--- a/report_kernel_336_after.txt
++++ /dev/null
+@@ -1,445 +0,0 @@
+---- KERNEL INFO ---
+-Linux localhost 4.14.186--9-g690101101069 #1 SMP PREEMPT Tue Aug  1 13:54:38 UTC 2023 aarch64 Toybox
+-Linux version 4.14.336-Exhorizon-Chopin-OSS-g0bbaf3e4f346-dirty (vettel@Ferrari) (Proton clang version 15.0.0 (https://github.com/llvm/llvm-project f4037650e0c74454e12b4eabd94fec06d678505f), LLD 15.0.0) #1 SMP PREEMPT Tue Apr 28 02:30:56 WIB 2026
+-
+-
+-
+-================================================================
+- CPU TOPOLOGY & CAPACITY
+-================================================================
+-  cpu0 : Capacity=241
+-  cpu1 : Capacity=241
+-  cpu2 : Capacity=241
+-  cpu3 : Capacity=241
+-  cpu4 : Capacity=917
+-  cpu5 : Capacity=917
+-  cpu6 : Capacity=917
+-  cpu7 : Capacity=917
+-
+-
+-================================================================
+- SCHEDULER & EAS TUNING
+-================================================================
+---- SchedTune Boost (Krusial untuk Game) ---
+-  top-app         : 0
+-  foreground      : 0
+-  background      : 0
+-
+---- Sched Features ---
+-
+---- EAS & Scheduler Nodes ---
+-  sched_latency_ns               : 10000000
+-  sched_min_granularity_ns       : 3000000
+-
+-
+-================================================================
+- PPM (Power Policy Manager)
+-================================================================
+---- Policy Status ---
+-[0] PPM_POLICY_PTPOD: enabled
+-[1] PPM_POLICY_UT: enabled
+-[2] PPM_POLICY_FORCE_LIMIT: enabled
+-[3] PPM_POLICY_PWR_THRO: enabled
+-[4] PPM_POLICY_THERMAL: enabled
+-[9] PPM_POLICY_SYS_BOOST: enabled
+-[6] PPM_POLICY_HARD_USER_LIMIT: enabled
+-[7] PPM_POLICY_USER_LIMIT: enabled
+-[8] PPM_POLICY_LCM_OFF: disabled
+-
+-Usage: echo <idx> <1/0> > /proc/ppm/policy_status
+-
+-
+---- Cluster DVFS Tables ---
+-Cluster 0: 2000000 1800000 1725000 1625000 1525000 1450000 1350000 1250000 1075000 1000000 925000 850000 750000 675000 600000 500000 
+-Cluster 1: 2600000 2507000 2354000 2200000 1985000 1855000 1740000 1624000 1537000 1451000 1335000 1162000 1046000 902000 700000 437000 
+-Cluster 2: 2600000 2529000 2410000 2292000 2127000 2032000 1938000 1820000 1745000 1632000 1482000 1370000 1258000 1108000 921000 659000 
+-
+---- PPM Mode & Limits ---
+-0: min_freq_idx = -1, max_freq_idx = -1
+-1: min_freq_idx = -1, max_freq_idx = -1
+-2: min_freq_idx = -1, max_freq_idx = -1
+-
+-
+-================================================================
+- SCHEDUTIL TUNING (Governor)
+-================================================================
+-Policy 0:
+-  down_rate_limit_us        : 1000
+-  up_rate_limit_us          : 1000
+-Policy 4:
+-  down_rate_limit_us        : 1000
+-  up_rate_limit_us          : 1000
+-Policy 7:
+-  down_rate_limit_us        : 1000
+-  up_rate_limit_us          : 1000
+-
+-
+-================================================================
+- MTK VOLTAGES (Krusial)
+-================================================================
+-Cluster B:
+-  Freq   : 1984000 KHz
+-  Volt   : Vproc: 900000 uV
+-Vsram: 1000000 uV
+-  OppIdx : [MT_CPU_DVFS_B/7]
+-cpufreq_oppidx = 0
+-	0  (2600000, 90000)
+-	1  (2529000, 88750)
+-	2  (2410000, 85625)
+-	3  (2292000, 82500)
+-	4  (2127000, 78125)
+-	5  (2032000, 75625)
+-	6  (1938000, 72500)
+-	7  (1820000, 68750)
+-	8  (1745000, 68125)
+-	9  (1632000, 66875)
+-	10 (1482000, 65000)
+-	11 (1370000, 63750)
+-	12 (1258000, 62500)
+-	13 (1108000, 60625)
+-	14 (921000, 58750)
+-	15 (659000, 55000)
+-Cluster L:
+-  Freq   : 1984000 KHz
+-  Volt   : Vproc: 675000 uV
+-Vsram: 775000 uV
+-  OppIdx : [MT_CPU_DVFS_L/4]
+-cpufreq_oppidx = 9
+-	0  (2600000, 90000)
+-	1  (2507000, 88125)
+-	2  (2354000, 84375)
+-	3  (2200000, 80625)
+-	4  (1985000, 75625)
+-	5  (1855000, 72500)
+-	6  (1740000, 69375)
+-	7  (1624000, 68125)
+-	8  (1537000, 67500)
+-	9  (1451000, 65625)
+-	10 (1335000, 64375)
+-	11 (1162000, 61875)
+-	12 (1046000, 60625)
+-	13 (902000, 58750)
+-	14 (700000, 55625)
+-	15 (437000, 55625)
+-Cluster CCI:
+-  Freq   : 1699000 KHz
+-  Volt   : Vproc: 875000 uV
+-Vsram: 975000 uV
+-  OppIdx : [MT_CPU_DVFS_CCI/10]
+-cpufreq_oppidx = 0
+-	0  (1700000, 87500)
+-	1  (1540000, 85000)
+-	2  (1400000, 81875)
+-	3  (1322000, 78750)
+-	4  (1288000, 76875)
+-	5  (1255000, 75000)
+-	6  (1182000, 71875)
+-	7  (1092000, 70000)
+-	8  (1021000, 68125)
+-	9  (949000, 66250)
+-	10 (895000, 65000)
+-	11 (824000, 63125)
+-	12 (770000, 61875)
+-	13 (716000, 60625)
+-	14 (627000, 58125)
+-	15 (520000, 55000)
+-Cluster LL:
+-  Freq   : 924500 KHz
+-  Volt   : Vproc: 875000 uV
+-Vsram: 975000 uV
+-  OppIdx : [MT_CPU_DVFS_LL/0]
+-cpufreq_oppidx = 12
+-	0  (2000000, 81875)
+-	1  (1800000, 77500)
+-	2  (1725000, 75625)
+-	3  (1625000, 73125)
+-	4  (1525000, 70625)
+-	5  (1450000, 69375)
+-	6  (1350000, 68125)
+-	7  (1250000, 66250)
+-	8  (1075000, 63125)
+-	9  (1000000, 61875)
+-	10 (925000, 60625)
+-	11 (850000, 59375)
+-	12 (750000, 57500)
+-	13 (675000, 56250)
+-	14 (600000, 55000)
+-	15 (500000, 55000)
+-
+-
+-================================================================
+- EEM / AVS (Detailed Status)
+-================================================================
+---- EEM_DET_B ---
+-bank = 2, feature:15, T(59590) - (90000, 88750, 85625, 82500, 78125, 75625, 72500, 68750, 68125, 66875, 65000, 63750, 62500, 60625, 58750, 55000) - (130, 127, 121, 115, 107, 102, 97, 91, 88, 82, 75, 69, 63, 56, 47, 33)
+-88750
+-[0],eem = [50], pmic = [90], volt = [90000]
+-[1],eem = [4e], pmic = [8e], volt = [88750]
+-[2],eem = [49], pmic = [89], volt = [85625]
+-[3],eem = [44], pmic = [84], volt = [82500]
+-[4],eem = [3d], pmic = [7d], volt = [78125]
+-[5],eem = [39], pmic = [79], volt = [75625]
+-[6],eem = [34], pmic = [74], volt = [72500]
+-[7],eem = [2e], pmic = [6e], volt = [68750]
+-[8],eem = [2d], pmic = [6d], volt = [68125]
+-[9],eem = [2b], pmic = [6b], volt = [66875]
+-[10],eem = [28], pmic = [68], volt = [65000]
+-[11],eem = [26], pmic = [66], volt = [63750]
+-[12],eem = [24], pmic = [64], volt = [62500]
+-[13],eem = [21], pmic = [61], volt = [60625]
+-[14],eem = [1e], pmic = [5e], volt = [58750]
+-[15],eem = [18], pmic = [58], volt = [55000]
+-isTempInv:2, eem_aging:0
+---- EEM_DET_L ---
+-bank = 0, feature:11, T(62580) - (81875, 77500, 75625, 73125, 70625, 69375, 68125, 66250, 63125, 61875, 60625, 59375, 57500, 56250, 55000, 55000) - (200, 180, 173, 163, 153, 145, 135, 125, 108, 100, 93, 85, 75, 68, 60, 50)
+-87500
+-[0],eem = [43], pmic = [83], volt = [81875]
+-[1],eem = [3c], pmic = [7c], volt = [77500]
+-[2],eem = [39], pmic = [79], volt = [75625]
+-[3],eem = [35], pmic = [75], volt = [73125]
+-[4],eem = [31], pmic = [71], volt = [70625]
+-[5],eem = [2f], pmic = [6f], volt = [69375]
+-[6],eem = [2d], pmic = [6d], volt = [68125]
+-[7],eem = [2a], pmic = [6a], volt = [66250]
+-[8],eem = [25], pmic = [65], volt = [63125]
+-[9],eem = [23], pmic = [63], volt = [61875]
+-[10],eem = [21], pmic = [61], volt = [60625]
+-[11],eem = [1f], pmic = [5f], volt = [59375]
+-[12],eem = [1c], pmic = [5c], volt = [57500]
+-[13],eem = [1a], pmic = [5a], volt = [56250]
+-[14],eem = [18], pmic = [58], volt = [55000]
+-[15],eem = [15], pmic = [58], volt = [55000]
+-isTempInv:2, eem_aging:0
+---- EEM_DET_BL ---
+-bank = 1, feature:15, T(60145) - (90000, 88125, 84375, 80625, 75625, 72500, 69375, 68125, 67500, 65625, 64375, 61875, 60625, 58750, 55625, 55625) - (100, 97, 91, 85, 77, 72, 67, 63, 60, 56, 52, 45, 41, 35, 27, 17)
+-88750
+-[0],eem = [50], pmic = [90], volt = [90000]
+-[1],eem = [4d], pmic = [8d], volt = [88125]
+-[2],eem = [47], pmic = [87], volt = [84375]
+-[3],eem = [41], pmic = [81], volt = [80625]
+-[4],eem = [39], pmic = [79], volt = [75625]
+-[5],eem = [34], pmic = [74], volt = [72500]
+-[6],eem = [2f], pmic = [6f], volt = [69375]
+-[7],eem = [2d], pmic = [6d], volt = [68125]
+-[8],eem = [2c], pmic = [6c], volt = [67500]
+-[9],eem = [29], pmic = [69], volt = [65625]
+-[10],eem = [27], pmic = [67], volt = [64375]
+-[11],eem = [23], pmic = [63], volt = [61875]
+-[12],eem = [21], pmic = [61], volt = [60625]
+-[13],eem = [1e], pmic = [5e], volt = [58750]
+-[14],eem = [19], pmic = [59], volt = [55625]
+-[15],eem = [19], pmic = [59], volt = [55625]
+-isTempInv:2, eem_aging:0
+---- EEM_DET_CCI ---
+-bank = 3, feature:15, T(61748) - (87500, 85000, 81875, 78750, 76875, 75000, 71875, 70000, 68125, 66250, 65000, 63125, 61875, 60625, 58125, 55000) - (170, 154, 140, 133, 129, 126, 119, 110, 103, 95, 90, 83, 77, 72, 63, 52)
+-87500
+-[0],eem = [4c], pmic = [8c], volt = [87500]
+-[1],eem = [48], pmic = [88], volt = [85000]
+-[2],eem = [43], pmic = [83], volt = [81875]
+-[3],eem = [3e], pmic = [7e], volt = [78750]
+-[4],eem = [3b], pmic = [7b], volt = [76875]
+-[5],eem = [38], pmic = [78], volt = [75000]
+-[6],eem = [33], pmic = [73], volt = [71875]
+-[7],eem = [30], pmic = [70], volt = [70000]
+-[8],eem = [2d], pmic = [6d], volt = [68125]
+-[9],eem = [2a], pmic = [6a], volt = [66250]
+-[10],eem = [28], pmic = [68], volt = [65000]
+-[11],eem = [25], pmic = [65], volt = [63125]
+-[12],eem = [23], pmic = [63], volt = [61875]
+-[13],eem = [21], pmic = [61], volt = [60625]
+-[14],eem = [1d], pmic = [5d], volt = [58125]
+-[15],eem = [18], pmic = [58], volt = [55000]
+-isTempInv:2, eem_aging:0
+-Margins: [CPU][EEM][CPU_BIG][HIGH] 1:8, 2:0, 3:3, 5:-1
+-[CPU][EEM][CPU_BIG][MID] 1:8, 2:0, 3:3, 5:-1
+-[CPU][EEM][CPU_L][HIGH] 1:8, 2:0, 3:3, 5:-1
+-[CPU][EEM][CPU_CCI][HIGH] 1:8, 2:0, 3:3, 5:-1
+-
+-
+-================================================================
+- THERMAL ZONES & COOLING
+-================================================================
+---- Thermal Zones ---
+-  mtktsbattery         : 37°C
+-  mtktsAP              : 44°C
+-  mtktswmt             : 46°C
+-  tzimgs0              : -127°C
+-  tzimgs1              : -127°C
+-  tzimgs2              : -127°C
+-  tzimgs3              : -127°C
+-  tzimgs4              : -127°C
+-  tzimgs5              : -127°C
+-  tzimgs6              : -127°C
+-  tzimgs7              : -127°C
+-  tzimgs8              : -127°C
+-  mtktsbtsmdpa         : 44°C
+-  tzimgs9              : -127°C
+-  tzimgs10             : -127°C
+-  tzimgs11             : -127°C
+-  tzimgs12             : -127°C
+-  battery              : 37°C
+-  bms                  : 37°C
+-  mtktscharger         : 46°C
+-  conn_therm           : 33°C
+-  mtktsbtsnrpa         : 41°C
+-  mtktscpu             : 60°C
+-  mtktspa              : -127°C
+-  mtktspmic            : 46°C
+-  charger_therm        : 34°C
+-  lcd_therm            : 26°C
+-  quiet_therm          : 40°C
+-
+---- Cooling Devices Status ---
+-  mtk-cl-shutdown02         : cur=0 / max=1
+-  mtk-cl-shutdown01         : cur=0 / max=1
+-  mtk-cl-kshutdown02        : cur=0 / max=1
+-  cpu10                     : cur=0 / max=1
+-  cpu11                     : cur=0 / max=1
+-  cpu12                     : cur=0 / max=1
+-  cpu13                     : cur=0 / max=1
+-  cpu14                     : cur=0 / max=1
+-  cpu15                     : cur=0 / max=1
+-  cpu16                     : cur=0 / max=1
+-  cpu17                     : cur=0 / max=1
+-  cpu18                     : cur=0 / max=1
+-  cpu19                     : cur=0 / max=1
+-  mtk-cl-kshutdown01        : cur=0 / max=1
+-  cpu20                     : cur=0 / max=1
+-  cpu21                     : cur=0 / max=1
+-  cpu22                     : cur=0 / max=1
+-  cpu23                     : cur=0 / max=1
+-  cpu24                     : cur=0 / max=1
+-  cpu25                     : cur=0 / max=1
+-  cpu26                     : cur=0 / max=1
+-  cpu27                     : cur=0 / max=1
+-  cpu28                     : cur=0 / max=1
+-  cpu29                     : cur=0 / max=1
+-  mtk-cl-kshutdown00        : cur=0 / max=1
+-  cpu30                     : cur=0 / max=1
+-  cpu31                     : cur=0 / max=1
+-  cpu32                     : cur=0 / max=1
+-  cpu33                     : cur=0 / max=1
+-  mtktscpu-sysrst           : cur=0 / max=1
+-  mtktsbuck-sysrst          : cur=0 / max=1
+-  mtktsAP-sysrst            : cur=0 / max=1
+-  mtkclVR_FPS               : cur=0 / max=1
+-  mt6359vcore-sysrst        : cur=0 / max=1
+-  mt6359vproc-sysrst        : cur=0 / max=1
+-  mtk-cl-cam02              : cur=0 / max=1
+-  mt6359vgpu-sysrst         : cur=0 / max=1
+-  mt6359tsx-sysrst          : cur=0 / max=1
+-  mt6359dcxo-sysrst         : cur=0 / max=1
+-  battery                   : cur=9 / max=16
+-  brightness0-clone         : cur=0 / max=8191
+-  mtktscharger-sysrst       : cur=0 / max=1
+-  mtk-cl-cam01              : cur=0 / max=1
+-  mtk-cl-cam00              : cur=0 / max=1
+-  mtk-cl-cam-urgent         : cur=0 / max=1
+-  mtktsbattery-sysrst       : cur=0 / max=1
+-  mtktspa-sysrst            : cur=0 / max=1
+-  mtktspmic-sysrst          : cur=0 / max=1
+-  mtk-cl-shutdown00         : cur=0 / max=1
+-  mtktswmt-sysrst           : cur=0 / max=1
+-  mtktswmt-pa1              : cur=0 / max=1
+-  mtktswmt-pa2              : cur=0 / max=1
+-  clnothing1                : cur=0 / max=1
+-  clnothing2                : cur=0 / max=1
+-  clnothing3                : cur=0 / max=1
+-  clnothing4                : cur=0 / max=1
+-  clnothing5                : cur=0 / max=1
+-  clnothing6                : cur=0 / max=1
+-  clnothing7                : cur=0 / max=1
+-  mtk-cl-backlight          : cur=100 / max=100
+-  clnothing8                : cur=0 / max=1
+-  clnothing9                : cur=0 / max=1
+-  clnothing10               : cur=0 / max=1
+-  clnothing11               : cur=0 / max=1
+-  clnothing12               : cur=0 / max=1
+-  clnothing13               : cur=0 / max=1
+-  clnothing14               : cur=0 / max=1
+-  clnothing15               : cur=0 / max=1
+-  clnothing16               : cur=0 / max=1
+-  clnothing17               : cur=0 / max=1
+-  mtk-cl-flashlight         : cur=34 / max=34
+-  tzimgs0-sysrst            : cur=0 / max=1
+-  tzimgs1-sysrst            : cur=0 / max=1
+-  tzimgs2-sysrst            : cur=0 / max=1
+-  tzimgs3-sysrst            : cur=0 / max=1
+-  tzimgs4-sysrst            : cur=0 / max=1
+-  tzimgs5-sysrst            : cur=0 / max=1
+-  tzimgs6-sysrst            : cur=0 / max=1
+-  tzimgs7-sysrst            : cur=0 / max=1
+-  tzimgs8-sysrst            : cur=0 / max=1
+-  tzimgs9-sysrst            : cur=0 / max=1
+-  mtk-cl-kshutdown07        : cur=0 / max=1
+-  tzimgs10-sysrst           : cur=0 / max=1
+-  tzimgs11-sysrst           : cur=0 / max=1
+-  tzimgs12-sysrst           : cur=0 / max=1
+-  mtk-cl-scg-off            : cur=0 / max=1
+-  mtk-cl-mutt00             : cur=0 / max=1
+-  mtk-cl-mutt01             : cur=0 / max=1
+-  mtk-cl-mutt02             : cur=0 / max=1
+-  mtk-cl-mutt03             : cur=0 / max=1
+-  mtk-cl-mutt04             : cur=0 / max=1
+-  mtk-cl-mutt05             : cur=0 / max=1
+-  mtk-cl-kshutdown06        : cur=0 / max=1
+-  mtk-cl-mutt06             : cur=0 / max=1
+-  mtk-cl-mutt07             : cur=0 / max=1
+-  mtk-cl-tx-pwr00           : cur=0 / max=1
+-  mtk-cl-tx-pwr01           : cur=0 / max=1
+-  mtk-cl-tx-pwr02           : cur=0 / max=1
+-  mtk-cl-noIMS              : cur=0 / max=1
+-  mtk-cl-mdoff              : cur=0 / max=1
+-  mtk-cl-adp-mutt           : cur=0 / max=1
+-  mtk-cl-mutt00-nr          : cur=0 / max=1
+-  mtk-cl-mutt01-nr          : cur=0 / max=1
+-  mtk-cl-kshutdown05        : cur=0 / max=1
+-  mtk-cl-mutt02-nr          : cur=0 / max=1
+-  mtk-cl-mutt03-nr          : cur=0 / max=1
+-  mtk-cl-mutt04-nr          : cur=0 / max=1
+-  mtk-cl-mutt05-nr          : cur=0 / max=1
+-  mtk-cl-mutt06-nr          : cur=0 / max=1
+-  mtk-cl-mutt07-nr          : cur=0 / max=1
+-  mtk-cl-tx-pwr00-nr        : cur=0 / max=1
+-  mtk-cl-tx-pwr01-nr        : cur=0 / max=1
+-  mtk-cl-tx-pwr02-nr        : cur=0 / max=1
+-  mtk-cl-noIMS-nr           : cur=0 / max=1
+-  mtk-cl-kshutdown04        : cur=0 / max=1
+-  mtk-cl-mdoff-nr           : cur=0 / max=1
+-  mtk-cl-adp-mutt-nr        : cur=0 / max=1
+-  mtk-cl-bcct02             : cur=0 / max=1
+-  mtk-cl-bcct01             : cur=0 / max=1
+-  mtk-cl-bcct00             : cur=0 / max=1
+-  abcct                     : cur=0 / max=1
+-  abcct_lcmoff              : cur=0 / max=1
+-  cpu_adaptive_0            : cur=1 / max=1
+-  cpu_adaptive_1            : cur=0 / max=1
+-  cpu_adaptive_2            : cur=0 / max=1
+-  mtk-cl-kshutdown03        : cur=0 / max=1
+-  cpu00                     : cur=0 / max=1
+-  cpu01                     : cur=0 / max=1
+-  cpu02                     : cur=0 / max=1
+-  cpu03                     : cur=0 / max=1
+-  cpu04                     : cur=0 / max=1
+-  cpu05                     : cur=0 / max=1
+-  cpu06                     : cur=0 / max=1
+-  cpu07                     : cur=0 / max=1
+-  cpu08                     : cur=0 / max=1
+-  cpu09                     : cur=0 / max=1
+-
+-
+-================================================================
+- GPU FREQUENCY & TUNING
+-================================================================
+-idx: 40, freq: 350000, vgpu: 55000, vsram_gpu: 75000
+-(real) freq: 0, freq: 350000, vgpu: -2, vsram_gpu: 50000
+-
+-
+-================================================================
+- SSPM / MCUPM STATUS
+-================================================================
+-
+-
+-================================================================
+- DONE ANALYSIS
+-================================================================
+
+commit a0c446f76b50e6e75460abe751b5b7d6a7a7333e
+Author: firenza <masudtxg@gmail.com>
+Date:   Tue Apr 28 06:50:57 2026 +0700
+
+    perf: adjust default schedplus down throttle to 1ms
+
+diff --git a/Exhorizon-chopin-20260428-0227.zip b/Exhorizon-chopin-20260428-0315.zip
+similarity index 65%
+rename from Exhorizon-chopin-20260428-0227.zip
+rename to Exhorizon-chopin-20260428-0315.zip
+index 9e6de2941363..9ea62723279a 100644
+Binary files a/Exhorizon-chopin-20260428-0227.zip and b/Exhorizon-chopin-20260428-0315.zip differ
+diff --git a/drivers/misc/mediatek/performance/boost_ctrl/eas_ctrl/eas_ctrl.c b/drivers/misc/mediatek/performance/boost_ctrl/eas_ctrl/eas_ctrl.c
+index c8a5ea943752..fed410aab542 100644
+--- a/drivers/misc/mediatek/performance/boost_ctrl/eas_ctrl/eas_ctrl.c
++++ b/drivers/misc/mediatek/performance/boost_ctrl/eas_ctrl/eas_ctrl.c
+@@ -1606,7 +1606,7 @@ int eas_ctrl_init(struct proc_dir_entry *parent)
+ 	perf_sched_big_task_rotation = 0;
+ 	perf_sched_stune_task_thresh = -1;
+ 
+-	default_schedplus_down_throttle_ns = 10000000;
++	default_schedplus_down_throttle_ns = 1000000;
+ 	default_schedplus_up_throttle_ns = 500000;
+ 	default_schedplus_sync_flag = 1;
+ 	cur_schedplus_down_throttle_ns = -1;
+
+commit bf74f8fae1f1242f49d3a2bbabcffd77eb492a53
+Author: firenza <masudtxg@gmail.com>
+Date:   Tue Apr 28 07:07:42 2026 +0700
+
+    perf: update MT6893 cpufreq PLL mapping and refine FBT BIG cluster CPU affinity masks
+
+diff --git a/Exhorizon-chopin-20260428-0315.zip b/Exhorizon-chopin-20260428-0701.zip
+similarity index 65%
+rename from Exhorizon-chopin-20260428-0315.zip
+rename to Exhorizon-chopin-20260428-0701.zip
+index 9ea62723279a..e700df552f69 100644
+Binary files a/Exhorizon-chopin-20260428-0315.zip and b/Exhorizon-chopin-20260428-0701.zip differ
+diff --git a/drivers/misc/mediatek/base/power/cpufreq_v1/src/mach/mt6893/mtk_cpufreq_platform.c b/drivers/misc/mediatek/base/power/cpufreq_v1/src/mach/mt6893/mtk_cpufreq_platform.c
+index 18c59fd4de60..921802d42812 100644
+--- a/drivers/misc/mediatek/base/power/cpufreq_v1/src/mach/mt6893/mtk_cpufreq_platform.c
++++ b/drivers/misc/mediatek/base/power/cpufreq_v1/src/mach/mt6893/mtk_cpufreq_platform.c
+@@ -113,7 +113,7 @@ struct mt_cpu_dvfs cpu_dvfs[NR_MT_CPU_DVFS] = {
+ 		.idx_opp_ppm_limit = 0,
+ 		.Vproc_buck_id = CPU_DVFS_VPROC1,
+ 		.Vsram_buck_id = CPU_DVFS_VSRAM1,
+-		.Pll_id = PLL_L_CLUSTER,
++		.Pll_id = PLL_B_CLUSTER,
+ 	},
+ 
+ 	[MT_CPU_DVFS_CCI] = {
+diff --git a/drivers/misc/mediatek/performance/fpsgo_v3/fbt/platform/mt6893/fbt_cpu_platform.c b/drivers/misc/mediatek/performance/fpsgo_v3/fbt/platform/mt6893/fbt_cpu_platform.c
+index 68b63e20760c..c38030233a97 100644
+--- a/drivers/misc/mediatek/performance/fpsgo_v3/fbt/platform/mt6893/fbt_cpu_platform.c
++++ b/drivers/misc/mediatek/performance/fpsgo_v3/fbt/platform/mt6893/fbt_cpu_platform.c
+@@ -110,9 +110,15 @@ static int generate_cpu_mask(unsigned int prefer_type, struct cpumask *cpu_mask)
+ 		cpumask_setall(cpu_mask);
+ 	else if (prefer_type == FPSGO_PREFER_BIG) {
+ 		cpumask_clear(cpu_mask);
++		cpumask_set_cpu(4, cpu_mask);
++		cpumask_set_cpu(5, cpu_mask);
++		cpumask_set_cpu(6, cpu_mask);
+ 		cpumask_set_cpu(7, cpu_mask);
+ 	} else if (prefer_type == FPSGO_PREFER_L_M) {
+ 		cpumask_setall(cpu_mask);
++		cpumask_clear_cpu(4, cpu_mask);
++		cpumask_clear_cpu(5, cpu_mask);
++		cpumask_clear_cpu(6, cpu_mask);
+ 		cpumask_clear_cpu(7, cpu_mask);
+ 	} else
+ 		return -1;
+
+commit 66727e4d5c397e1257e455a6bc90e4ea654d6122
+Author: firenza <masudtxg@gmail.com>
+Date:   Tue Apr 28 13:25:13 2026 +0700
+
+    perf: reconfigure CPU topology, power domains, and boost parameters
+
+diff --git a/.gitignore b/.gitignore
+index 837f2247c2df..1f76df79cd4a 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -128,3 +128,4 @@ kernel/configs/android-*.cfg
+ out/
+ KernelSU/
+ *patches.sh
++*.gb6
+diff --git a/Exhorizon-chopin-20260428-0701.zip b/Exhorizon-chopin-20260428-1242.zip
+similarity index 65%
+rename from Exhorizon-chopin-20260428-0701.zip
+rename to Exhorizon-chopin-20260428-1242.zip
+index e700df552f69..67afae28280e 100644
+Binary files a/Exhorizon-chopin-20260428-0701.zip and b/Exhorizon-chopin-20260428-1242.zip differ
+diff --git a/drivers/misc/mediatek/base/power/cpufreq_v1/src/mach/mt6893/mtk_cpufreq_platform.c b/drivers/misc/mediatek/base/power/cpufreq_v1/src/mach/mt6893/mtk_cpufreq_platform.c
+index 921802d42812..18c59fd4de60 100644
+--- a/drivers/misc/mediatek/base/power/cpufreq_v1/src/mach/mt6893/mtk_cpufreq_platform.c
++++ b/drivers/misc/mediatek/base/power/cpufreq_v1/src/mach/mt6893/mtk_cpufreq_platform.c
+@@ -113,7 +113,7 @@ struct mt_cpu_dvfs cpu_dvfs[NR_MT_CPU_DVFS] = {
+ 		.idx_opp_ppm_limit = 0,
+ 		.Vproc_buck_id = CPU_DVFS_VPROC1,
+ 		.Vsram_buck_id = CPU_DVFS_VSRAM1,
+-		.Pll_id = PLL_B_CLUSTER,
++		.Pll_id = PLL_L_CLUSTER,
+ 	},
+ 
+ 	[MT_CPU_DVFS_CCI] = {
+diff --git a/drivers/misc/mediatek/base/power/ppm_v3/src/mach/mt6893/mtk_ppm_platform.h b/drivers/misc/mediatek/base/power/ppm_v3/src/mach/mt6893/mtk_ppm_platform.h
+index c20cf526bad5..f27ce4b68a3a 100644
+--- a/drivers/misc/mediatek/base/power/ppm_v3/src/mach/mt6893/mtk_ppm_platform.h
++++ b/drivers/misc/mediatek/base/power/ppm_v3/src/mach/mt6893/mtk_ppm_platform.h
+@@ -47,8 +47,8 @@ extern "C" {
+ #define COBRA_OPP_NUM	(DVFS_OPP_NUM)
+ #define TOTAL_CORE_NUM	(CORE_NUM_L+CORE_NUM_B+CORE_NUM_BB)
+ #define CORE_NUM_L	(4)
+-#define CORE_NUM_B	(4)
+-#define CORE_NUM_BB	(0)
++#define CORE_NUM_B	(3)
++#define CORE_NUM_BB	(1)
+ 
+ #define PPM_COBRA_TBL_SRAM_ADDR	(0x0011B800)
+ #define PPM_COBRA_TBL_SRAM_SIZE \
+@@ -165,9 +165,9 @@ static inline void ppm_get_cl_cpus(struct cpumask *cpu_mask, unsigned int cid)
+ 		cpumask_set_cpu(4, cpu_mask);
+ 		cpumask_set_cpu(5, cpu_mask);
+ 		cpumask_set_cpu(6, cpu_mask);
+-		cpumask_set_cpu(7, cpu_mask);
+ 	} else if (cid == 2) {
+ 		cpumask_clear(cpu_mask);
++		cpumask_set_cpu(7, cpu_mask);
+ 	}
+ }
+ 
+diff --git a/drivers/misc/mediatek/base/power/upower_v2/mtk_unified_power_mt6893.c b/drivers/misc/mediatek/base/power/upower_v2/mtk_unified_power_mt6893.c
+index 5d7c1205d42d..e4633f809dc0 100644
+--- a/drivers/misc/mediatek/base/power/upower_v2/mtk_unified_power_mt6893.c
++++ b/drivers/misc/mediatek/base/power/upower_v2/mtk_unified_power_mt6893.c
+@@ -227,8 +227,10 @@ int cpu_cluster_mapping(unsigned int cpu)
+ 
+ 	if (cpu < 4) /* cpu 0-3 */
+ 		bank = UPOWER_BANK_LL;
+-	else if (cpu < 8) /* cpu 4-7 */
++	else if (cpu < 7) /* cpu 4-6 */
+ 		bank = UPOWER_BANK_L;
++	else if (cpu < 8) /* cpu 7 */
++		bank = UPOWER_BANK_B;
+ 
+ 	return bank;
+ }
+diff --git a/drivers/misc/mediatek/performance/boost_ctrl/eas_ctrl/eas_ctrl.c b/drivers/misc/mediatek/performance/boost_ctrl/eas_ctrl/eas_ctrl.c
+index fed410aab542..70bdf1a50546 100644
+--- a/drivers/misc/mediatek/performance/boost_ctrl/eas_ctrl/eas_ctrl.c
++++ b/drivers/misc/mediatek/performance/boost_ctrl/eas_ctrl/eas_ctrl.c
+@@ -1582,8 +1582,8 @@ int eas_ctrl_init(struct proc_dir_entry *parent)
+ 	}
+ 
+ 	/* Optimized Defaults for Chopin */
+-	boost_value[CGROUP_TA][EAS_KIR_PERF] = 10;   /* Top-app boost */
+-	current_boost_value[CGROUP_TA] = 10;
++	boost_value[CGROUP_TA][EAS_KIR_PERF] = 15;   /* Top-app boost */
++	current_boost_value[CGROUP_TA] = 15;
+ 	prefer_idle[CGROUP_TA] = 1;                  /* UI latency reduction */
+ 
+ 	boost_value[CGROUP_FG][EAS_KIR_PERF] = 5;    /* Foreground boost */
+@@ -1607,7 +1607,7 @@ int eas_ctrl_init(struct proc_dir_entry *parent)
+ 	perf_sched_stune_task_thresh = -1;
+ 
+ 	default_schedplus_down_throttle_ns = 1000000;
+-	default_schedplus_up_throttle_ns = 500000;
++	default_schedplus_up_throttle_ns = 0;
+ 	default_schedplus_sync_flag = 1;
+ 	cur_schedplus_down_throttle_ns = -1;
+ 	cur_schedplus_up_throttle_ns = -1;
+
+commit 4c05f59840e20a15dd05c8b2ec30cd1a42e96399
+Author: firenza <masudtxg@gmail.com>
+Date:   Tue Apr 28 14:06:24 2026 +0700
+
+    perf: increase background restriction intensity and adjust schedplus up-throttle threshold
+
+diff --git a/Exhorizon-chopin-20260428-1242.zip b/Exhorizon-chopin-20260428-1402.zip
+similarity index 65%
+rename from Exhorizon-chopin-20260428-1242.zip
+rename to Exhorizon-chopin-20260428-1402.zip
+index 67afae28280e..0dbc3160d5cc 100644
+Binary files a/Exhorizon-chopin-20260428-1242.zip and b/Exhorizon-chopin-20260428-1402.zip differ
+diff --git a/drivers/misc/mediatek/performance/boost_ctrl/eas_ctrl/eas_ctrl.c b/drivers/misc/mediatek/performance/boost_ctrl/eas_ctrl/eas_ctrl.c
+index 70bdf1a50546..1ad885ea2b40 100644
+--- a/drivers/misc/mediatek/performance/boost_ctrl/eas_ctrl/eas_ctrl.c
++++ b/drivers/misc/mediatek/performance/boost_ctrl/eas_ctrl/eas_ctrl.c
+@@ -1589,8 +1589,8 @@ int eas_ctrl_init(struct proc_dir_entry *parent)
+ 	boost_value[CGROUP_FG][EAS_KIR_PERF] = 5;    /* Foreground boost */
+ 	current_boost_value[CGROUP_FG] = 5;
+ 
+-	boost_value[CGROUP_BG][EAS_KIR_PERF] = -10;  /* Background restriction */
+-	current_boost_value[CGROUP_BG] = -10;
++	boost_value[CGROUP_BG][EAS_KIR_PERF] = -20;  /* Background restriction */
++	current_boost_value[CGROUP_BG] = -20;
+ #endif
+ 
+ #if defined(CONFIG_UCLAMP_TASK_GROUP) && defined(CONFIG_SCHED_TUNE)
+@@ -1607,7 +1607,7 @@ int eas_ctrl_init(struct proc_dir_entry *parent)
+ 	perf_sched_stune_task_thresh = -1;
+ 
+ 	default_schedplus_down_throttle_ns = 1000000;
+-	default_schedplus_up_throttle_ns = 0;
++	default_schedplus_up_throttle_ns = 500000;
+ 	default_schedplus_sync_flag = 1;
+ 	cur_schedplus_down_throttle_ns = -1;
+ 	cur_schedplus_up_throttle_ns = -1;
+
+commit 92fbf1a05fb469961c1bb5b7f3cf3f1ff7d32a29
+Author: firenza <masudtxg@gmail.com>
+Date:   Tue Apr 28 14:37:36 2026 +0700
+
+    refactor: update CPU thermal trip 1 threshold from 57°C to 65°C
+
+diff --git a/drivers/misc/mediatek/thermal/common/thermal_zones/mtk_ts_cpu_noBank.c b/drivers/misc/mediatek/thermal/common/thermal_zones/mtk_ts_cpu_noBank.c
+index 95f52400c541..fdca1b44674b 100644
+--- a/drivers/misc/mediatek/thermal/common/thermal_zones/mtk_ts_cpu_noBank.c
++++ b/drivers/misc/mediatek/thermal/common/thermal_zones/mtk_ts_cpu_noBank.c
+@@ -1444,9 +1444,9 @@ static ssize_t tscpu_write
+ 
+ 		for (i = 0; i < num_trip; i++) {
+ 			trip_temp[i] = ptr_mtktscpu_data->trip[i];
+-			if (i != 0 && trip_temp[i] > 57000)
++			if (i != 0 && trip_temp[i] > 65000)
+ 				tscpu_printk(
+-				"%s trip temp %d is over 57'C (%d)!\n",
++				"%s trip temp %d is over 65'C (%d)!\n",
+ 				__func__, i, trip_temp[i]);
+ 		}
+ 
+diff --git a/drivers/misc/mediatek/thermal/mt6893/inc/tzcpu_initcfg.h b/drivers/misc/mediatek/thermal/mt6893/inc/tzcpu_initcfg.h
+index b441df6489bd..d5e13f84cc21 100644
+--- a/drivers/misc/mediatek/thermal/mt6893/inc/tzcpu_initcfg.h
++++ b/drivers/misc/mediatek/thermal/mt6893/inc/tzcpu_initcfg.h
+@@ -22,7 +22,7 @@
+ #define TZCPU_INITCFG_TRIP_0_TEMP		(117000)
+ #define TZCPU_INITCFG_TRIP_0_COOLER		"mtktscpu-sysrst"
+ 
+-#define TZCPU_INITCFG_TRIP_1_TEMP		(57000)
++#define TZCPU_INITCFG_TRIP_1_TEMP		(65000)
+ #define TZCPU_INITCFG_TRIP_1_COOLER		"cpu_adaptive_0"
+ 
+ #define TZCPU_INITCFG_TRIP_2_TEMP		(64000)
+
+commit de8b2ed52d11f65d2fa9508e7fd262bd8cc3cccf
+Author: firenza <masudtxg@gmail.com>
+Date:   Tue Apr 28 15:04:21 2026 +0700
+
+    refactor: optimize fbt cpu platform mask settings by restricting big core selection to cpu 7
+
+diff --git a/Exhorizon-chopin-20260428-1402.zip b/Exhorizon-chopin-20260428-1454.zip
+similarity index 65%
+rename from Exhorizon-chopin-20260428-1402.zip
+rename to Exhorizon-chopin-20260428-1454.zip
+index 0dbc3160d5cc..9929a91a7391 100644
+Binary files a/Exhorizon-chopin-20260428-1402.zip and b/Exhorizon-chopin-20260428-1454.zip differ
+diff --git a/drivers/misc/mediatek/performance/fpsgo_v3/fbt/platform/mt6893/fbt_cpu_platform.c b/drivers/misc/mediatek/performance/fpsgo_v3/fbt/platform/mt6893/fbt_cpu_platform.c
+index c38030233a97..68b63e20760c 100644
+--- a/drivers/misc/mediatek/performance/fpsgo_v3/fbt/platform/mt6893/fbt_cpu_platform.c
++++ b/drivers/misc/mediatek/performance/fpsgo_v3/fbt/platform/mt6893/fbt_cpu_platform.c
+@@ -110,15 +110,9 @@ static int generate_cpu_mask(unsigned int prefer_type, struct cpumask *cpu_mask)
+ 		cpumask_setall(cpu_mask);
+ 	else if (prefer_type == FPSGO_PREFER_BIG) {
+ 		cpumask_clear(cpu_mask);
+-		cpumask_set_cpu(4, cpu_mask);
+-		cpumask_set_cpu(5, cpu_mask);
+-		cpumask_set_cpu(6, cpu_mask);
+ 		cpumask_set_cpu(7, cpu_mask);
+ 	} else if (prefer_type == FPSGO_PREFER_L_M) {
+ 		cpumask_setall(cpu_mask);
+-		cpumask_clear_cpu(4, cpu_mask);
+-		cpumask_clear_cpu(5, cpu_mask);
+-		cpumask_clear_cpu(6, cpu_mask);
+ 		cpumask_clear_cpu(7, cpu_mask);
+ 	} else
+ 		return -1;
+
+commit 625f753b91a6b4ad1c0eac68c1ec3e24a906a990
+Author: firenza <masudtxg@gmail.com>
+Date:   Tue Apr 28 15:18:16 2026 +0700
+
+    perf: disable top-app boost and adjust schedplus up-throttle values in EAS controller
+
+diff --git a/Exhorizon-chopin-20260428-1454.zip b/Exhorizon-chopin-20260428-1512.zip
+similarity index 65%
+rename from Exhorizon-chopin-20260428-1454.zip
+rename to Exhorizon-chopin-20260428-1512.zip
+index 9929a91a7391..38b146c1f649 100644
+Binary files a/Exhorizon-chopin-20260428-1454.zip and b/Exhorizon-chopin-20260428-1512.zip differ
+diff --git a/drivers/misc/mediatek/performance/boost_ctrl/eas_ctrl/eas_ctrl.c b/drivers/misc/mediatek/performance/boost_ctrl/eas_ctrl/eas_ctrl.c
+index 1ad885ea2b40..4bcd4cf35f7a 100644
+--- a/drivers/misc/mediatek/performance/boost_ctrl/eas_ctrl/eas_ctrl.c
++++ b/drivers/misc/mediatek/performance/boost_ctrl/eas_ctrl/eas_ctrl.c
+@@ -1582,8 +1582,8 @@ int eas_ctrl_init(struct proc_dir_entry *parent)
+ 	}
+ 
+ 	/* Optimized Defaults for Chopin */
+-	boost_value[CGROUP_TA][EAS_KIR_PERF] = 15;   /* Top-app boost */
+-	current_boost_value[CGROUP_TA] = 15;
++	boost_value[CGROUP_TA][EAS_KIR_PERF] = 0;   /* Top-app boost */
++	current_boost_value[CGROUP_TA] = 0;
+ 	prefer_idle[CGROUP_TA] = 1;                  /* UI latency reduction */
+ 
+ 	boost_value[CGROUP_FG][EAS_KIR_PERF] = 5;    /* Foreground boost */
+@@ -1607,7 +1607,7 @@ int eas_ctrl_init(struct proc_dir_entry *parent)
+ 	perf_sched_stune_task_thresh = -1;
+ 
+ 	default_schedplus_down_throttle_ns = 1000000;
+-	default_schedplus_up_throttle_ns = 500000;
++	default_schedplus_up_throttle_ns = 1000000;
+ 	default_schedplus_sync_flag = 1;
+ 	cur_schedplus_down_throttle_ns = -1;
+ 	cur_schedplus_up_throttle_ns = -1;
+
+commit 79161aca37576ce368a599a0b18796d5b34db693
+Author: firenza <masudtxg@gmail.com>
+Date:   Tue Apr 28 15:54:08 2026 +0700
+
+    perf: optimize CPU frequency scaling, task boosting, and cluster selection for Chopin platform
+
+diff --git a/Exhorizon-chopin-20260428-1512.zip b/Exhorizon-chopin-20260428-1547.zip
+similarity index 65%
+rename from Exhorizon-chopin-20260428-1512.zip
+rename to Exhorizon-chopin-20260428-1547.zip
+index 38b146c1f649..1cebf44a7b8a 100644
+Binary files a/Exhorizon-chopin-20260428-1512.zip and b/Exhorizon-chopin-20260428-1547.zip differ
+diff --git a/drivers/misc/mediatek/base/power/ppm_v3/src/mtk_ppm_policy_sys_boost.c b/drivers/misc/mediatek/base/power/ppm_v3/src/mtk_ppm_policy_sys_boost.c
+index 86705176b3b4..f428e9b2008c 100644
+--- a/drivers/misc/mediatek/base/power/ppm_v3/src/mtk_ppm_policy_sys_boost.c
++++ b/drivers/misc/mediatek/base/power/ppm_v3/src/mtk_ppm_policy_sys_boost.c
+@@ -303,8 +303,11 @@ static void ppm_sysboost_update_limit_cb(void)
+ 		ppm_clear_policy_limit(&sysboost_policy);
+ 
+ 		for (i = 0; i < req->cluster_num; i++) {
++			/* Ignore minimum frequency locks (SYS_BOOST) for Big and Prime clusters (i == 1 || i == 2).
++			 * This prevents Game Turbo (perfserv) from locking CPU 7 to 2.6GHz,
++			 * which forces the entire A78 cluster to 900mV due to the shared PLL. */
+ 			req->limit[i].min_cpufreq_idx =
+-				(p->limit[i].min_freq_idx == -1)
++				(p->limit[i].min_freq_idx == -1 || i == 1 || i == 2)
+ 				? req->limit[i].min_cpufreq_idx
+ 				: p->limit[i].min_freq_idx;
+ 			req->limit[i].max_cpufreq_idx =
+diff --git a/drivers/misc/mediatek/performance/boost_ctrl/eas_ctrl/eas_ctrl.c b/drivers/misc/mediatek/performance/boost_ctrl/eas_ctrl/eas_ctrl.c
+index 4bcd4cf35f7a..1ad885ea2b40 100644
+--- a/drivers/misc/mediatek/performance/boost_ctrl/eas_ctrl/eas_ctrl.c
++++ b/drivers/misc/mediatek/performance/boost_ctrl/eas_ctrl/eas_ctrl.c
+@@ -1582,8 +1582,8 @@ int eas_ctrl_init(struct proc_dir_entry *parent)
+ 	}
+ 
+ 	/* Optimized Defaults for Chopin */
+-	boost_value[CGROUP_TA][EAS_KIR_PERF] = 0;   /* Top-app boost */
+-	current_boost_value[CGROUP_TA] = 0;
++	boost_value[CGROUP_TA][EAS_KIR_PERF] = 15;   /* Top-app boost */
++	current_boost_value[CGROUP_TA] = 15;
+ 	prefer_idle[CGROUP_TA] = 1;                  /* UI latency reduction */
+ 
+ 	boost_value[CGROUP_FG][EAS_KIR_PERF] = 5;    /* Foreground boost */
+@@ -1607,7 +1607,7 @@ int eas_ctrl_init(struct proc_dir_entry *parent)
+ 	perf_sched_stune_task_thresh = -1;
+ 
+ 	default_schedplus_down_throttle_ns = 1000000;
+-	default_schedplus_up_throttle_ns = 1000000;
++	default_schedplus_up_throttle_ns = 500000;
+ 	default_schedplus_sync_flag = 1;
+ 	cur_schedplus_down_throttle_ns = -1;
+ 	cur_schedplus_up_throttle_ns = -1;
+diff --git a/drivers/misc/mediatek/performance/fpsgo_v3/fbt/platform/mt6893/fbt_cpu_platform.c b/drivers/misc/mediatek/performance/fpsgo_v3/fbt/platform/mt6893/fbt_cpu_platform.c
+index 68b63e20760c..18ab1793d66a 100644
+--- a/drivers/misc/mediatek/performance/fpsgo_v3/fbt/platform/mt6893/fbt_cpu_platform.c
++++ b/drivers/misc/mediatek/performance/fpsgo_v3/fbt/platform/mt6893/fbt_cpu_platform.c
+@@ -110,9 +110,15 @@ static int generate_cpu_mask(unsigned int prefer_type, struct cpumask *cpu_mask)
+ 		cpumask_setall(cpu_mask);
+ 	else if (prefer_type == FPSGO_PREFER_BIG) {
+ 		cpumask_clear(cpu_mask);
++		cpumask_set_cpu(4, cpu_mask);
++		cpumask_set_cpu(5, cpu_mask);
++		cpumask_set_cpu(6, cpu_mask);
+ 		cpumask_set_cpu(7, cpu_mask);
+ 	} else if (prefer_type == FPSGO_PREFER_L_M) {
+ 		cpumask_setall(cpu_mask);
++		cpumask_clear_cpu(4, cpu_mask);
++		cpumask_clear_cpu(5, cpu_mask);
++		cpumask_clear_cpu(6, cpu_mask);
+ 		cpumask_clear_cpu(7, cpu_mask);
+ 	} else
+ 		return -1;
+@@ -187,7 +193,7 @@ int fbt_get_cluster_limit(int *cluster, int *freq, int *r_freq)
+  * when cluster is set and freq is set -> ceiling limit
+  * when cluster is set and r_freq is set -> rescue ceiling limit
+  */
+-	*cluster = 2;
++	*cluster = 1;
+ 	*freq = 2600000;
+ 	return 1;
+ }
+
+commit 008ba5ec96358a03ce1f347894c81abf7b1523b8
+Author: firenza <masudtxg@gmail.com>
+Date:   Tue Apr 28 16:32:26 2026 +0700
+
+    refactor: bypass gpu_min_clock_store to allow dynamic frequency scaling and prevent overheating
+
+diff --git a/Exhorizon-chopin-20260428-1547.zip b/Exhorizon-chopin-20260428-1618.zip
+similarity index 65%
+rename from Exhorizon-chopin-20260428-1547.zip
+rename to Exhorizon-chopin-20260428-1618.zip
+index 1cebf44a7b8a..7866567d135d 100644
+Binary files a/Exhorizon-chopin-20260428-1547.zip and b/Exhorizon-chopin-20260428-1618.zip differ
+diff --git a/drivers/misc/mediatek/gpu/ged/src/ged_ski.c b/drivers/misc/mediatek/gpu/ged/src/ged_ski.c
+index c13ecdfacaca..68399fe7eb21 100644
+--- a/drivers/misc/mediatek/gpu/ged/src/ged_ski.c
++++ b/drivers/misc/mediatek/gpu/ged/src/ged_ski.c
+@@ -155,39 +155,11 @@ ssize_t gpu_min_clock_show(struct kobject *kobj,
+ static ssize_t gpu_min_clock_store(struct kobject *kobj,
+ 		struct kobj_attribute *attr, const char *buf, size_t count)
+ {
+-	int min_freq = 0;
+-	struct mt_gpufreq_power_table_info *power_table = NULL;
+-	unsigned int table_num = 0;
+-	unsigned int max_opp_idx = 0;
+-	int idx = 0;
+-	int index_count = 0;
+-
+-	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
+-
+-	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
+-		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+-			if (kstrtoint(acBuffer, 0, &min_freq) == 0) {
+-				if (min_freq <= 0)
+-					return -EINVAL;
+-
+-				power_table = pass_gpu_table_to_eara();
+-				table_num = mt_gpufreq_get_dvfs_table_num();
+-				max_opp_idx = mt_gpufreq_get_seg_max_opp_index();
+-
+-				for (idx = max_opp_idx; index_count < table_num; index_count++) {
+-					if (min_freq ==
+-					    power_table[idx + index_count].gpufreq_khz) {
+-						mtk_custom_boost_gpu_freq(index_count);
+-						return count;
+-					}
+-				}
+-
+-				GED_LOGE("SKI: set min clock failed (%d not support)!\n", min_freq);
+-			}
+-		}
+-	}
+-
+-	return -EINVAL;
++	/* Ignore all userspace minimum clock locks for the GPU.
++	 * Game Turbo artificially locks the Mali GPU to 886MHz during light games
++	 * causing massive overheating (41°C).
++	 * By ignoring this, the GPU governor can freely drop to 350MHz. */
++	return count;
+ }
+ 
+ static KOBJ_ATTR_RW(gpu_min_clock);
+
+commit c55f46de4699606107f928759a6887e34aa5e578
+Author: firenza <masudtxg@gmail.com>
+Date:   Tue Apr 28 16:47:41 2026 +0700
+
+    perf: disable cpufreq minimum locks for big/prime cores and remove thermal warning from GPU governor
+
+diff --git a/Exhorizon-chopin-20260428-1618.zip b/Exhorizon-chopin-20260428-1636.zip
+similarity index 65%
+rename from Exhorizon-chopin-20260428-1618.zip
+rename to Exhorizon-chopin-20260428-1636.zip
+index 7866567d135d..282ac14ecf86 100644
+Binary files a/Exhorizon-chopin-20260428-1618.zip and b/Exhorizon-chopin-20260428-1636.zip differ
+diff --git a/drivers/misc/mediatek/base/power/cpufreq_v1/src/mtk_cpufreq_main.c b/drivers/misc/mediatek/base/power/cpufreq_v1/src/mtk_cpufreq_main.c
+index 92b5b7042025..5b8e53a873b1 100644
+--- a/drivers/misc/mediatek/base/power/cpufreq_v1/src/mtk_cpufreq_main.c
++++ b/drivers/misc/mediatek/base/power/cpufreq_v1/src/mtk_cpufreq_main.c
+@@ -1190,8 +1190,13 @@ static void ppm_limit_callback(struct ppm_client_req req)
+ 			p->idx_opp_ppm_limit =
+ 			ppm->cpu_limit[i].advise_cpufreq_idx;
+ 		} else {
+-			p->idx_opp_ppm_base =
+-			ppm->cpu_limit[i].min_cpufreq_idx;
++			/* Ignore minimum frequency locks from ALL PPM sources (USER_LIMIT, HARD_USER_LIMIT, SYS_BOOST)
++			 * for Big and Prime clusters (i == 1 || i == 2).
++			 * This guarantees that CPU 4-7 will never be forced to 2.6GHz/900mV during gaming. */
++			if (i == 1 || i == 2)
++				p->idx_opp_ppm_base = -1;
++			else
++				p->idx_opp_ppm_base = ppm->cpu_limit[i].min_cpufreq_idx;
+ 			/* ppm update base */
+ 			p->idx_opp_ppm_limit =
+ 			ppm->cpu_limit[i].max_cpufreq_idx;
+diff --git a/drivers/misc/mediatek/gpu/ged/src/ged_ski.c b/drivers/misc/mediatek/gpu/ged/src/ged_ski.c
+index 68399fe7eb21..c7e5f20e246c 100644
+--- a/drivers/misc/mediatek/gpu/ged/src/ged_ski.c
++++ b/drivers/misc/mediatek/gpu/ged/src/ged_ski.c
+@@ -157,7 +157,6 @@ static ssize_t gpu_min_clock_store(struct kobject *kobj,
+ {
+ 	/* Ignore all userspace minimum clock locks for the GPU.
+ 	 * Game Turbo artificially locks the Mali GPU to 886MHz during light games
+-	 * causing massive overheating (41°C).
+ 	 * By ignoring this, the GPU governor can freely drop to 350MHz. */
+ 	return count;
+ }
+
+commit e78b73604ec593cf061341664df4a4341f2a3628
+Author: firenza <masudtxg@gmail.com>
+Date:   Tue Apr 28 17:25:51 2026 +0700
+
+    perf: disable CPU frequency overrides from Xiaomi performance and game services
+
+diff --git a/Exhorizon-chopin-20260428-1636.zip b/Exhorizon-chopin-20260428-1720.zip
+similarity index 65%
+rename from Exhorizon-chopin-20260428-1636.zip
+rename to Exhorizon-chopin-20260428-1720.zip
+index 282ac14ecf86..423b7e596288 100644
+Binary files a/Exhorizon-chopin-20260428-1636.zip and b/Exhorizon-chopin-20260428-1720.zip differ
+diff --git a/drivers/cpufreq/cpufreq.c b/drivers/cpufreq/cpufreq.c
+index 553dec7e84b5..9de99ea9bc02 100644
+--- a/drivers/cpufreq/cpufreq.c
++++ b/drivers/cpufreq/cpufreq.c
+@@ -709,6 +709,12 @@ static ssize_t store_##file_name					\
+ 	if (ret != 1)							\
+ 		return -EINVAL;						\
+ 									\
++	/* Game Turbo override: prevent userspace from locking minimum freq too high */ \
++	if (!strcmp(#file_name, "scaling_min_freq")) { \
++		if (new_policy.object > 1000000) \
++			new_policy.object = 1000000; \
++	} \
++									\
+ 	temp = new_policy.object;					\
+ 	ret = cpufreq_set_policy(policy, &new_policy);		\
+ 	if (!ret)							\
+diff --git a/drivers/misc/mediatek/base/power/cpufreq_v1/src/mtk_cpufreq_interface.c b/drivers/misc/mediatek/base/power/cpufreq_v1/src/mtk_cpufreq_interface.c
+index 26c974a61a2b..3c4793596c61 100644
+--- a/drivers/misc/mediatek/base/power/cpufreq_v1/src/mtk_cpufreq_interface.c
++++ b/drivers/misc/mediatek/base/power/cpufreq_v1/src/mtk_cpufreq_interface.c
+@@ -187,42 +187,9 @@ static int cpufreq_oppidx_proc_show(struct seq_file *m, void *v)
+ static ssize_t cpufreq_oppidx_proc_write(struct file *file,
+ 	const char __user *buffer, size_t count, loff_t *pos)
+ {
+-	struct mt_cpu_dvfs *p = PDE_DATA(file_inode(file));
+-	int oppidx;
+-	int rc;
+-
+-	char *buf = _copy_from_user_for_proc(buffer, count);
+-
+-	if (!buf)
+-		return -EINVAL;
+-
+-	rc = kstrtoint(buf, 10, &oppidx);
+-	if (rc < 0) {
+-		p->dvfs_disable_by_procfs = false;
+-		tag_pr_info("echo oppidx > /proc/cpufreq/%s/cpufreq_oppidx\n",
+-		p->name);
+-	} else {
+-		if (oppidx >= 0 && oppidx < p->nr_opp_tbl) {
+-			p->dvfs_disable_by_procfs = true;
+-#ifdef CONFIG_HYBRID_CPU_DVFS
+-			if (!cpu_dvfs_is(p, MT_CPU_DVFS_CCI))
+-				cpuhvfs_set_freq(
+-					arch_get_cluster_id(p->cpu_id),
+-					cpu_dvfs_get_freq_by_idx(p, oppidx));
+-#else
+-			_mt_cpufreq_dvfs_request_wrapper(p, oppidx,
+-			MT_CPU_DVFS_NORMAL, NULL);
+-#endif
+-		} else {
+-			p->dvfs_disable_by_procfs = false;
+-			tag_pr_info
+-			("echo oppidx > /proc/cpufreq/%s/cpufreq_oppidx\n",
+-			p->name);
+-		}
+-	}
+-
+-	free_page((unsigned long)buf);
+-
++	/* Block Xiaomi perfserv/Game Turbo from hard-locking the CPU via MTK debug interfaces.
++	 * Writing to this node previously set dvfs_disable_by_procfs = true,
++	 * completely paralyzing the Schedutil governor and forcing 2.6GHz forever. */
+ 	return count;
+ }
+ 
+@@ -243,93 +210,7 @@ static int cpufreq_freq_proc_show(struct seq_file *m, void *v)
+ static ssize_t cpufreq_freq_proc_write(struct file *file,
+ 	const char __user *buffer, size_t count, loff_t *pos)
+ {
+-	struct mt_cpu_dvfs *p = PDE_DATA(file_inode(file));
+-	int freq, i, found = 0;
+-	int rc;
+-
+-	char *buf = _copy_from_user_for_proc(buffer, count);
+-
+-	if (!buf)
+-		return -EINVAL;
+-
+-	rc = kstrtoint(buf, 10, &freq);
+-	if (rc < 0) {
+-		p->dvfs_disable_by_procfs = false;
+-		tag_pr_info
+-		("echo khz > /proc/cpufreq/%s/cpufreq_freq\n", p->name);
+-	} else {
+-#ifdef CONFIG_MTK_CPU_MSSV
+-		if (!cpumssv_get_state()) {
+-			for (i = 0; i < p->nr_opp_tbl; i++) {
+-				if (freq == p->opp_tbl[i].cpufreq_khz) {
+-					found = 1;
+-					break;
+-				}
+-			}
+-		} else if (freq > 0)
+-			found = 1;
+-
+-		if (found == 1) {
+-			p->dvfs_disable_by_procfs = true;
+-  #ifdef CONFIG_HYBRID_CPU_DVFS
+-			if (!cpu_dvfs_is(p, MT_CPU_DVFS_CCI))
+-    #ifdef SINGLE_CLUSTER
+-				cpuhvfs_set_freq(cpufreq_get_cluster_id(
+-					p->cpu_id), freq);
+-    #else
+-				cpuhvfs_set_freq(arch_get_cluster_id(
+-					p->cpu_id), freq);
+-    #endif
+-			else
+-				cpuhvfs_set_freq(MT_CPU_DVFS_CCI, freq);
+-  #else
+-			_mt_cpufreq_dvfs_request_wrapper(p,
+-					i, MT_CPU_DVFS_NORMAL, NULL);
+-  #endif
+-		} else {
+-			p->dvfs_disable_by_procfs = false;
+-			tag_pr_info(
+-		"frequency %dKHz! is not found in CPU opp table\n", freq);
+-			}
+-#else
+-		if (freq < p->opp_tbl[p->nr_opp_tbl - 1].cpufreq_khz) {
+-			if (freq != 0)
+-				tag_pr_info
+-				("frequency should higher than %dKHz!\n",
+-				p->opp_tbl[p->nr_opp_tbl - 1].cpufreq_khz);
+-
+-			p->dvfs_disable_by_procfs = false;
+-		} else {
+-			for (i = 0; i < p->nr_opp_tbl; i++) {
+-				if (freq == p->opp_tbl[i].cpufreq_khz) {
+-					found = 1;
+-					break;
+-				}
+-			}
+-
+-			if (found == 1) {
+-				p->dvfs_disable_by_procfs = true;
+-#ifdef CONFIG_HYBRID_CPU_DVFS
+-				if (!cpu_dvfs_is(p, MT_CPU_DVFS_CCI))
+-					cpuhvfs_set_freq(
+-					arch_get_cluster_id(p->cpu_id),
+-						cpu_dvfs_get_freq_by_idx(p, i));
+-#else
+-				_mt_cpufreq_dvfs_request_wrapper(p,
+-				i, MT_CPU_DVFS_NORMAL, NULL);
+-#endif
+-			} else {
+-				p->dvfs_disable_by_procfs = false;
+-				tag_pr_info
+-			("frequency %dKHz! is not found in CPU opp table\n",
+-					    freq);
+-			}
+-		}
+-#endif
+-	}
+-
+-	free_page((unsigned long)buf);
+-
++	/* Block Xiaomi perfserv/Game Turbo from hard-locking the CPU via MTK debug interfaces. */
+ 	return count;
+ }
+ 
+
+commit 6499fa161b2fbd3bcfe581d4f422baf3776c87e6
+Author: firenza <masudtxg@gmail.com>
+Date:   Tue Apr 28 18:38:04 2026 +0700
+
+    perf: normalize CPU 7 capacity to cluster 4 levels to improve EAS task distribution and thermal management
+
+diff --git a/Exhorizon-chopin-20260428-1720.zip b/Exhorizon-chopin-20260428-1816.zip
+similarity index 65%
+rename from Exhorizon-chopin-20260428-1720.zip
+rename to Exhorizon-chopin-20260428-1816.zip
+index 423b7e596288..ecd4d56d8629 100644
+Binary files a/Exhorizon-chopin-20260428-1720.zip and b/Exhorizon-chopin-20260428-1816.zip differ
+diff --git a/arch/arm64/kernel/topology_dts.c b/arch/arm64/kernel/topology_dts.c
+index cb992ef9a231..fcf34e48ff1e 100644
+--- a/arch/arm64/kernel/topology_dts.c
++++ b/arch/arm64/kernel/topology_dts.c
+@@ -201,6 +201,9 @@ unsigned long arch_scale_get_min_freq(int cpu)
+ 
+ unsigned long arch_get_max_cpu_capacity(int cpu)
+ {
++	/* Normalize MediaTek's internal capacity reporting for CPU 7. */
++	if (cpu == 7)
++		return per_cpu(cpu_scale, 4);
+ 	return per_cpu(cpu_scale, cpu);
+ }
+ 
+diff --git a/drivers/base/arch_topology.c b/drivers/base/arch_topology.c
+index 18d88acc8feb..faaf4ad6d703 100644
+--- a/drivers/base/arch_topology.c
++++ b/drivers/base/arch_topology.c
+@@ -391,6 +391,14 @@ void topology_normalize_cpu_scale(void)
+ 	for_each_possible_cpu(cpu) {
+ 		capacity = (raw_capacity[cpu] << SCHED_CAPACITY_SHIFT)
+ 			/ capacity_scale;
++			
++		/* Normalize CPU 7 capacity to match CPU 4-6 (typically 917 instead of 1024).
++		 * This forces the EAS scheduler to treat the entire A78 cluster symmetrically,
++		 * preventing heavy tasks from being funneled exclusively to CPU 7 and
++		 * preventing unnecessary thermal spikes to 2.6GHz. */
++		if (cpu == 7)
++			capacity = (raw_capacity[4] << SCHED_CAPACITY_SHIFT) / capacity_scale;
++			
+ 		topology_set_cpu_scale(cpu, capacity);
+ 		pr_debug("cpu_capacity: CPU%d cpu_capacity=%lu raw_capacity=%u\n",
+ 			cpu, topology_get_cpu_scale(NULL, cpu),
+diff --git a/include/linux/arch_topology.h b/include/linux/arch_topology.h
+index f735ca371830..d8fef24ab8e9 100644
+--- a/include/linux/arch_topology.h
++++ b/include/linux/arch_topology.h
+@@ -24,6 +24,10 @@ struct sched_domain;
+ static inline
+ unsigned long topology_get_cpu_scale(struct sched_domain *sd, int cpu)
+ {
++	/* Force CPU 7 to report the same capacity as CPU 4 (typically 917).
++	 * This prevents EAS from funneling all heavy tasks into CPU 7. */
++	if (cpu == 7)
++		return per_cpu(cpu_scale, 4);
+ 	return per_cpu(cpu_scale, cpu);
+ }
+ 
+
+commit cc7c4b43b22663f99c6d60f4bf289af3c3628e24
+Author: firenza <masudtxg@gmail.com>
+Date:   Tue Apr 28 18:57:43 2026 +0700
+
+    feat: extend schedtune boost range to support negative values from -100 to 100
+
+diff --git a/kernel/sched/tune.c b/kernel/sched/tune.c
+index d23ea0ce7087..c24d801917ff 100644
+--- a/kernel/sched/tune.c
++++ b/kernel/sched/tune.c
+@@ -742,8 +742,13 @@ boost_write(struct cgroup_subsys_state *css, struct cftype *cft,
+ {
+ 	struct schedtune *st = css_st(css);
+ 
+-	if (boost < 0 || boost > 100)
+-		return -EINVAL;
++	if (boost < -100 || boost > 100)
++		printk_deferred("warn: boost value should be -100~100\n");
++
++	if (boost > 100)
++		boost = 100;
++	else if (boost < -100)
++		boost = -100;
+ 
+ 	st->boost = boost;
+ 
+diff --git a/kernel/sched/tune_plus.c b/kernel/sched/tune_plus.c
+index b6f54f7be12d..195d3eee1e8b 100644
+--- a/kernel/sched/tune_plus.c
++++ b/kernel/sched/tune_plus.c
+@@ -148,13 +148,13 @@ int boost_write_for_perf_idx(int idx, int boost_value)
+ {
+ 	struct schedtune *ct;
+ 
+-	if (boost_value < 0 || boost_value > 100)
+-		printk_deferred("warn: boost value should be 0~100\n");
++	if (boost_value < -100 || boost_value > 100)
++		printk_deferred("warn: boost value should be -100~100\n");
+ 
+ 	if (boost_value >= 100)
+ 		boost_value = 100;
+-	else if (boost_value <= 0)
+-		boost_value = 0;
++	else if (boost_value <= -100)
++		boost_value = -100;
+ 
+ 	if (!is_group_idx_valid(idx))
+ 		return -ERANGE;
+
+commit 096b63047b076485126db0931db8407d5fe77f9e
+Author: firenza <masudtxg@gmail.com>
+Date:   Tue Apr 28 19:38:35 2026 +0700
+
+    fix: update CPU 7 capacity scaling to static value of 1000 in topology drivers
+
+diff --git a/Exhorizon-chopin-20260428-1816.zip b/Exhorizon-chopin-20260428-1917.zip
+similarity index 65%
+rename from Exhorizon-chopin-20260428-1816.zip
+rename to Exhorizon-chopin-20260428-1917.zip
+index ecd4d56d8629..9ecd2b749468 100644
+Binary files a/Exhorizon-chopin-20260428-1816.zip and b/Exhorizon-chopin-20260428-1917.zip differ
+diff --git a/arch/arm64/kernel/topology_dts.c b/arch/arm64/kernel/topology_dts.c
+index fcf34e48ff1e..931c2361ccc7 100644
+--- a/arch/arm64/kernel/topology_dts.c
++++ b/arch/arm64/kernel/topology_dts.c
+@@ -203,7 +203,7 @@ unsigned long arch_get_max_cpu_capacity(int cpu)
+ {
+ 	/* Normalize MediaTek's internal capacity reporting for CPU 7. */
+ 	if (cpu == 7)
+-		return per_cpu(cpu_scale, 4);
++		return 1000;
+ 	return per_cpu(cpu_scale, cpu);
+ }
+ 
+diff --git a/include/linux/arch_topology.h b/include/linux/arch_topology.h
+index d8fef24ab8e9..f06d0a39664d 100644
+--- a/include/linux/arch_topology.h
++++ b/include/linux/arch_topology.h
+@@ -27,7 +27,7 @@ unsigned long topology_get_cpu_scale(struct sched_domain *sd, int cpu)
+ 	/* Force CPU 7 to report the same capacity as CPU 4 (typically 917).
+ 	 * This prevents EAS from funneling all heavy tasks into CPU 7. */
+ 	if (cpu == 7)
+-		return per_cpu(cpu_scale, 4);
++		return 1000;
+ 	return per_cpu(cpu_scale, cpu);
+ }
+ 
+
+commit 457175fdf8e2f53ace6575dcb797a91d13c9ce99
+Author: firenza <masudtxg@gmail.com>
+Date:   Tue Apr 28 21:20:23 2026 +0700
+
+    feat: update EAS controller defaults and optimize scheduler configuration in chopin_defconfig
+
+diff --git a/Exhorizon-chopin-20260428-1917.zip b/Exhorizon-chopin-20260428-2059.zip
+similarity index 65%
+rename from Exhorizon-chopin-20260428-1917.zip
+rename to Exhorizon-chopin-20260428-2059.zip
+index 9ecd2b749468..02e0a69c9f37 100644
+Binary files a/Exhorizon-chopin-20260428-1917.zip and b/Exhorizon-chopin-20260428-2059.zip differ
+diff --git a/arch/arm64/configs/chopin_defconfig b/arch/arm64/configs/chopin_defconfig
+index 4044383edba1..e80addb5908e 100644
+--- a/arch/arm64/configs/chopin_defconfig
++++ b/arch/arm64/configs/chopin_defconfig
+@@ -9,6 +9,7 @@ CONFIG_UCLAMP_TASK_GROUP=y
+ CONFIG_CPUSETS=y
+ CONFIG_SCHED_TUNE=y
+ CONFIG_DEFAULT_USE_ENERGY_AWARE=y
++CONFIG_MTK_SCHED_EAS_POWER_SUPPORT=y
+ # CONFIG_RD_BZIP2 is not set
+ # CONFIG_RD_LZMA is not set
+ # CONFIG_RD_XZ is not set
+@@ -192,11 +193,11 @@ CONFIG_MTK_SYSTRACKER_V2=y
+ CONFIG_MTK_CHIP=y
+ CONFIG_MTK_IDLE_BALANCE_ENHANCEMENT=y
+ CONFIG_MTK_SCHED_MULTI_GEARS=y
+-CONFIG_SCHED_HMP=y
+-CONFIG_MTK_SCHED_BOOST=y
+-CONFIG_MTK_SCHED_RQAVG_KS=y
+-CONFIG_MTK_SCHED_RQAVG_US=y
+-CONFIG_MTK_SCHED_CPULOAD=y
++# CONFIG_SCHED_HMP is not set
++# CONFIG_MTK_SCHED_BOOST is not set
++# CONFIG_MTK_SCHED_RQAVG_KS is not set
++# CONFIG_MTK_SCHED_RQAVG_US is not set
++# CONFIG_MTK_SCHED_CPULOAD is not set
+ CONFIG_MTK_AURISYS_PHONE_CALL_SUPPORT=y
+ CONFIG_MTK_AUDIODSP_SUPPORT=y
+ CONFIG_MTK_RAM_CONSOLE=y
+diff --git a/drivers/misc/mediatek/performance/boost_ctrl/eas_ctrl/eas_ctrl.c b/drivers/misc/mediatek/performance/boost_ctrl/eas_ctrl/eas_ctrl.c
+index 1ad885ea2b40..f4e965f7dfdd 100644
+--- a/drivers/misc/mediatek/performance/boost_ctrl/eas_ctrl/eas_ctrl.c
++++ b/drivers/misc/mediatek/performance/boost_ctrl/eas_ctrl/eas_ctrl.c
+@@ -1591,6 +1591,12 @@ int eas_ctrl_init(struct proc_dir_entry *parent)
+ 
+ 	boost_value[CGROUP_BG][EAS_KIR_PERF] = -20;  /* Background restriction */
+ 	current_boost_value[CGROUP_BG] = -20;
++
++	/* Explicitly push defaults to SchedTune CGroup/Scheduler */
++	boost_write_for_perf_idx(CGROUP_TA, current_boost_value[CGROUP_TA]);
++	prefer_idle_for_perf_idx(CGROUP_TA, prefer_idle[CGROUP_TA]);
++	boost_write_for_perf_idx(CGROUP_FG, current_boost_value[CGROUP_FG]);
++	boost_write_for_perf_idx(CGROUP_BG, current_boost_value[CGROUP_BG]);
+ #endif
+ 
+ #if defined(CONFIG_UCLAMP_TASK_GROUP) && defined(CONFIG_SCHED_TUNE)
+
+commit 2ab821213ae6224e428d8e729ed6620b8948f76e
+Author: firenza <masudtxg@gmail.com>
+Date:   Tue Apr 28 21:51:25 2026 +0700
+
+    feat: hardwire optimized boost defaults in sched tune to prevent zeroing by userspace and drivers
+
+diff --git a/Exhorizon-chopin-20260428-2059.zip b/Exhorizon-chopin-20260428-2147.zip
+similarity index 65%
+rename from Exhorizon-chopin-20260428-2059.zip
+rename to Exhorizon-chopin-20260428-2147.zip
+index 02e0a69c9f37..b077f13d3ce6 100644
+Binary files a/Exhorizon-chopin-20260428-2059.zip and b/Exhorizon-chopin-20260428-2147.zip differ
+diff --git a/kernel/sched/tune.c b/kernel/sched/tune.c
+index c24d801917ff..41adb307c548 100644
+--- a/kernel/sched/tune.c
++++ b/kernel/sched/tune.c
+@@ -750,6 +750,14 @@ boost_write(struct cgroup_subsys_state *css, struct cftype *cft,
+ 	else if (boost < -100)
+ 		boost = -100;
+ 
++	/* Hardwire Optimized Defaults: Prevent userspace (PowerHAL) from resetting to 0 */
++	if (boost == 0) {
++		if (st->idx == 2)      /* CGROUP_BG */
++			boost = -20;
++		else if (st->idx == 3) /* CGROUP_TA */
++			boost = 15;
++	}
++
+ 	st->boost = boost;
+ 
+ 	/* Update CPU boost */
+diff --git a/kernel/sched/tune_plus.c b/kernel/sched/tune_plus.c
+index 195d3eee1e8b..68750ac6face 100644
+--- a/kernel/sched/tune_plus.c
++++ b/kernel/sched/tune_plus.c
+@@ -162,6 +162,15 @@ int boost_write_for_perf_idx(int idx, int boost_value)
+ 	ct = allocated_group[idx];
+ 	if (ct) {
+ 		rcu_read_lock();
++		
++		/* Hardwire Optimized Defaults: Prevent internal MTK drivers from resetting to 0 */
++		if (boost_value == 0) {
++			if (idx == 2)      /* CGROUP_BG */
++				boost_value = -20;
++			else if (idx == 3) /* CGROUP_TA */
++				boost_value = 15;
++		}
++
+ 		ct->boost = boost_value;
+ 
+ 		/* Update CPU boost */
+
+commit ceea0549a95c8bc63b8e07bd0c5f6abdd27df719
+Author: firenza <masudtxg@gmail.com>
+Date:   Tue Apr 28 23:09:22 2026 +0700
+
+    feat: implement hardwired schedtune group defaults for boost and prefer_idle based on cgroup names
+
+diff --git a/Exhorizon-chopin-20260428-2147.zip b/Exhorizon-chopin-20260428-2301.zip
+similarity index 65%
+rename from Exhorizon-chopin-20260428-2147.zip
+rename to Exhorizon-chopin-20260428-2301.zip
+index b077f13d3ce6..6a8467978ab9 100644
+Binary files a/Exhorizon-chopin-20260428-2147.zip and b/Exhorizon-chopin-20260428-2301.zip differ
+diff --git a/kernel/sched/tune.c b/kernel/sched/tune.c
+index 41adb307c548..3436c8fd5fc8 100644
+--- a/kernel/sched/tune.c
++++ b/kernel/sched/tune.c
+@@ -712,6 +712,23 @@ prefer_idle_write(struct cgroup_subsys_state *css, struct cftype *cft,
+ 	    u64 prefer_idle)
+ {
+ 	struct schedtune *st = css_st(css);
++
++	if (st->css.cgroup) {
++		char name[64];
++		cgroup_name(st->css.cgroup, name, sizeof(name));
++
++		/* Hardwire Prefer Idle based on group name */
++		if (strcmp(name, "top-app") == 0 ||
++		    strcmp(name, "foreground") == 0 ||
++		    strcmp(name, "rt") == 0 ||
++		    strcmp(name, "camera-daemon") == 0 ||
++		    strcmp(name, "sf_standalone") == 0) {
++			prefer_idle = 1;
++		} else if (strcmp(name, "background") == 0) {
++			prefer_idle = 0;
++		}
++	}
++
+ 	st->prefer_idle = !!prefer_idle;
+ 
+ #if MET_STUNE_DEBUG
+@@ -752,10 +769,23 @@ boost_write(struct cgroup_subsys_state *css, struct cftype *cft,
+ 
+ 	/* Hardwire Optimized Defaults: Prevent userspace (PowerHAL) from resetting to 0 */
+ 	if (boost == 0) {
+-		if (st->idx == 2)      /* CGROUP_BG */
+-			boost = -20;
+-		else if (st->idx == 3) /* CGROUP_TA */
+-			boost = 15;
++		if (st->css.cgroup) {
++			char name[64];
++			cgroup_name(st->css.cgroup, name, sizeof(name));
++
++			if (strcmp(name, "top-app") == 0)
++				boost = 15;
++			else if (strcmp(name, "background") == 0)
++				boost = -20;
++			else if (strcmp(name, "foreground") == 0)
++				boost = 0;
++		} else {
++			/* Fallback to index if cgroup is not yet available */
++			if (st->idx == 2)      /* CGROUP_BG */
++				boost = -20;
++			else if (st->idx == 3) /* CGROUP_TA */
++				boost = 15;
++		}
+ 	}
+ 
+ 	st->boost = boost;
+@@ -868,6 +898,22 @@ schedtune_css_alloc(struct cgroup_subsys_state *parent_css)
+ 
+ 	/* Initialize per CPUs boost group support */
+ 	st->idx = idx;
++
++	/* Hardwire Optimized Defaults at creation based on index (Safer for early boot) */
++	if (st->idx == 1) {      /* CGROUP_FG */
++		st->boost = 0;
++		st->prefer_idle = 1;
++	} else if (st->idx == 2) { /* CGROUP_BG */
++		st->boost = -20;
++		st->prefer_idle = 0;
++	} else if (st->idx == 3) { /* CGROUP_TA */
++		st->boost = 15;
++		st->prefer_idle = 1;
++	}
++	
++	pr_info("schedtune: group allocated with idx %d (boost=%d, prefer_idle=%d)\n",
++		st->idx, st->boost, st->prefer_idle);
++
+ 	if (schedtune_boostgroup_init(st))
+ 		goto release;
+ 
+diff --git a/kernel/sched/tune_plus.c b/kernel/sched/tune_plus.c
+index 68750ac6face..0caa72510801 100644
+--- a/kernel/sched/tune_plus.c
++++ b/kernel/sched/tune_plus.c
+@@ -165,7 +165,9 @@ int boost_write_for_perf_idx(int idx, int boost_value)
+ 		
+ 		/* Hardwire Optimized Defaults: Prevent internal MTK drivers from resetting to 0 */
+ 		if (boost_value == 0) {
+-			if (idx == 2)      /* CGROUP_BG */
++			if (idx == 1)      /* CGROUP_FG */
++				boost_value = 0;
++			else if (idx == 2) /* CGROUP_BG */
+ 				boost_value = -20;
+ 			else if (idx == 3) /* CGROUP_TA */
+ 				boost_value = 15;
+@@ -207,7 +209,15 @@ int prefer_idle_for_perf_idx(int idx, int prefer_idle)
+ 		return -EINVAL;
+ 
+ 	rcu_read_lock();
+-	ct->prefer_idle = prefer_idle;
++	/* Hardwire Prefer Idle for EAS Performance */
++	if (idx == 1)      /* CGROUP_FG */
++		prefer_idle = 1;
++	else if (idx == 2) /* CGROUP_BG */
++		prefer_idle = 0;
++	else if (idx == 3) /* CGROUP_TA */
++		prefer_idle = 1;
++
++	ct->prefer_idle = !!prefer_idle;
+ 	rcu_read_unlock();
+ 
+ #if MET_STUNE_DEBUG

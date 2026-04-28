@@ -1444,9 +1444,9 @@ static ssize_t tscpu_write
 
 		for (i = 0; i < num_trip; i++) {
 			trip_temp[i] = ptr_mtktscpu_data->trip[i];
-			if (i != 0 && trip_temp[i] > 57000)
+			if (i != 0 && trip_temp[i] > 65000)
 				tscpu_printk(
-				"%s trip temp %d is over 57'C (%d)!\n",
+				"%s trip temp %d is over 65'C (%d)!\n",
 				__func__, i, trip_temp[i]);
 		}
 

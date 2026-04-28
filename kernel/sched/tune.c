@@ -768,6 +768,18 @@ boost_write(struct cgroup_subsys_state *css, struct cftype *cft,
 		boost = -100;
 
 
+	if (boost == 0 && current && !(current->flags & PF_KTHREAD)) {
+		char comm[TASK_COMM_LEN];
+
+		get_task_comm(comm, current);
+		if (strstr(comm, "mtkpower") ||
+		    strstr(comm, "perfserv") ||
+		    strstr(comm, "powerhal")) {
+			/* Silently ignore reset from power services */
+			return 0;
+		}
+	}
+
 	st->boost = boost;
 
 	/* Update CPU boost */

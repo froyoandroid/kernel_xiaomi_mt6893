@@ -163,6 +163,18 @@ int boost_write_for_perf_idx(int idx, int boost_value)
 	if (ct) {
 		rcu_read_lock();
 		
+		if (boost_value == 0 && current && !(current->flags & PF_KTHREAD)) {
+			char comm[TASK_COMM_LEN];
+
+			get_task_comm(comm, current);
+			if (strstr(comm, "mtkpower") ||
+			    strstr(comm, "perfserv") ||
+			    strstr(comm, "powerhal")) {
+				/* Silently ignore reset from power services */
+				rcu_read_unlock();
+				return 0;
+			}
+		}
 
 		ct->boost = boost_value;
 

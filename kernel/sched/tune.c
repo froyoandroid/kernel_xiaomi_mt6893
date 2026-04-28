@@ -742,8 +742,13 @@ boost_write(struct cgroup_subsys_state *css, struct cftype *cft,
 {
 	struct schedtune *st = css_st(css);
 
-	if (boost < 0 || boost > 100)
-		return -EINVAL;
+	if (boost < -100 || boost > 100)
+		printk_deferred("warn: boost value should be -100~100\n");
+
+	if (boost > 100)
+		boost = 100;
+	else if (boost < -100)
+		boost = -100;
 
 	st->boost = boost;
 

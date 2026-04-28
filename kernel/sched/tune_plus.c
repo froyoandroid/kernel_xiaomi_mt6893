@@ -148,13 +148,13 @@ int boost_write_for_perf_idx(int idx, int boost_value)
 {
 	struct schedtune *ct;
 
-	if (boost_value < 0 || boost_value > 100)
-		printk_deferred("warn: boost value should be 0~100\n");
+	if (boost_value < -100 || boost_value > 100)
+		printk_deferred("warn: boost value should be -100~100\n");
 
 	if (boost_value >= 100)
 		boost_value = 100;
-	else if (boost_value <= 0)
-		boost_value = 0;
+	else if (boost_value <= -100)
+		boost_value = -100;
 
 	if (!is_group_idx_valid(idx))
 		return -ERANGE;

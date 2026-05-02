@@ -753,50 +753,43 @@ boost_read(struct cgroup_subsys_state *css, struct cftype *cft)
 	return st->boost;
 }
 
+static inline bool is_vendor_power_service(const char *comm)
+{
+	return strstr(comm, "mtkpower") ||
+	       strstr(comm, "perfserv") ||
+	       strstr(comm, "powerhal") ||
+	       strstr(comm, "joyose");
+}
+
 static int
 boost_write(struct cgroup_subsys_state *css, struct cftype *cft,
 	    s64 boost)
 {
 	struct schedtune *st = css_st(css);
+	char comm[TASK_COMM_LEN];
 
-	if (boost < -100 || boost > 100)
-		printk_deferred("warn: boost value should be -100~100\n");
+	/* 1. Use standard kernel clamping */
+	boost = clamp_val(boost, -100, 100);
 
-	if (boost > 100)
-		boost = 100;
-	else if (boost < -100)
-		boost = -100;
-
-
-	if (st->css.cgroup && boost == 0) {
-		char name[64];
-		char comm[TASK_COMM_LEN];
-
-		cgroup_name(st->css.cgroup, name, sizeof(name));
-		get_task_comm(comm, current);
-
-		if (strcmp(name, "top-app") == 0 && (
-		    strstr(comm, "joyose") ||
-		    strstr(comm, "mtkpower") ||
-		    strstr(comm, "perfserv") ||
-		    strstr(comm, "powerhal"))) {
-			boost = 10;
-		}
-	}
-
+	/* 2. Intercept vendor power services: only check comm once */
 	if (boost == 0 && current && !(current->flags & PF_KTHREAD)) {
-		char comm[TASK_COMM_LEN];
-
 		get_task_comm(comm, current);
-		if (strstr(comm, "mtkpower") ||
-		    strstr(comm, "perfserv") ||
-		    strstr(comm, "powerhal")) {
-			/* Silently ignore reset from power services */
-			return 0;
+
+		if (is_vendor_power_service(comm)) {
+			/* 
+			 * Use index (st->idx) instead of string name for efficiency.
+			 * Index 3 is the standard TA (top-app) in SchedTune.
+			 */
+			if (st->idx == 3) {
+				boost = 10;
+			} else {
+				/* Silently ignore reset from power services */
+				return 0;
+			}
 		}
 	}
 
-	st->boost = boost;
+	st->boost = (int)boost;
 
 	/* Update CPU boost */
 	schedtune_boostgroup_update(st->idx, st->boost);
@@ -812,6 +805,7 @@ boost_write(struct cgroup_subsys_state *css, struct cftype *cft,
 
 	return 0;
 }
+
 
 static struct cftype files[] = {
 	{

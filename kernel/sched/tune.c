@@ -772,20 +772,12 @@ boost_write(struct cgroup_subsys_state *css, struct cftype *cft,
 	boost = clamp_val(boost, -100, 100);
 
 	/* 2. Intercept vendor power services: only check comm once */
-	if (boost == 0 && current && !(current->flags & PF_KTHREAD)) {
+	if (boost == 0 && st->idx != 3 && current && !(current->flags & PF_KTHREAD)) {
 		get_task_comm(comm, current);
 
 		if (is_vendor_power_service(comm)) {
-			/* 
-			 * Use index (st->idx) instead of string name for efficiency.
-			 * Index 3 is the standard TA (top-app) in SchedTune.
-			 */
-			if (st->idx == 3) {
-				boost = 10;
-			} else {
-				/* Silently ignore reset from power services */
-				return 0;
-			}
+			/* Silently ignore reset from power services for non-TA groups */
+			return 0;
 		}
 	}
 

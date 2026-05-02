@@ -163,6 +163,9 @@ int boost_write_for_perf_idx(int idx, int boost_value)
 	if (ct) {
 		rcu_read_lock();
 		
+		if (idx == 3 && boost_value == 0)
+			boost_value = 10;
+
 		if (boost_value == 0 && current && !(current->flags & PF_KTHREAD)) {
 			char comm[TASK_COMM_LEN];
 

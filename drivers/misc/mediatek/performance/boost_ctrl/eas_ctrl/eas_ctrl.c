@@ -1582,8 +1582,8 @@ int eas_ctrl_init(struct proc_dir_entry *parent)
 	}
 
 	/* Optimized Defaults for Chopin */
-	boost_value[CGROUP_TA][EAS_KIR_PERF] = 15;   /* Top-app boost */
-	current_boost_value[CGROUP_TA] = 15;
+	boost_value[CGROUP_TA][EAS_KIR_PERF] = 10;   /* Top-app boost */
+	current_boost_value[CGROUP_TA] = 10;
 	prefer_idle[CGROUP_TA] = 1;                  /* UI latency reduction */
 
 	boost_value[CGROUP_FG][EAS_KIR_PERF] = 5;    /* Foreground boost */

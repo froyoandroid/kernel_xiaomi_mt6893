@@ -768,6 +768,13 @@ boost_write(struct cgroup_subsys_state *css, struct cftype *cft,
 		boost = -100;
 
 
+	if (st->css.cgroup) {
+		char name[64];
+		cgroup_name(st->css.cgroup, name, sizeof(name));
+		if (strcmp(name, "top-app") == 0 && boost == 0)
+			boost = 10;
+	}
+
 	if (boost == 0 && current && !(current->flags & PF_KTHREAD)) {
 		char comm[TASK_COMM_LEN];
 

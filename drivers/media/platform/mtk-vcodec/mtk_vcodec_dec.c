@@ -2778,6 +2778,7 @@ static int mtk_vdec_s_ctrl(struct v4l2_ctrl *ctrl)
 		break;
 	case V4L2_CID_MPEG_MTK_INTERLACING:
 	case V4L2_CID_MPEG_MTK_CODEC_TYPE:
+	case V4L2_CID_MPEG_MTK_COLOR_DESC:
 		/* satisfy userspace set request */
 		break;
 	default:

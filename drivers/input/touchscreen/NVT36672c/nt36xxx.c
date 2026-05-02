@@ -1476,6 +1476,10 @@ static irqreturn_t nvt_ts_work_func(int irq, void *data)
 
 #if WAKEUP_GESTURE
 	if (bTouchIsAwake == 0) {
+		/* Discard junk data (0xFF) to prevent spurious wakeups and IRQ flood */
+		if (point_data[1] == 0xFF && point_data[2] == 0xFF) {
+			goto XFER_ERROR;
+		}
 		input_id = (uint8_t)(point_data[1] >> 3);
 		nvt_ts_wakeup_gesture_report(input_id, point_data);
 		mutex_unlock(&ts->lock);
@@ -1558,7 +1562,7 @@ static irqreturn_t nvt_ts_work_func(int irq, void *data)
 			if (finger_cnt == 0 && test_bit(i, ts->slot_map)) {
 				input_report_key(ts->input_dev, BTN_TOUCH, 0);
 				input_report_key(ts->input_dev, BTN_TOOL_FINGER, 0);
-				NVT_ERR("finger leave\n");
+				//NVT_ERR("finger leave\n");
 			}
 			clear_bit(i, ts->slot_map);
 		}

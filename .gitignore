@@ -130,3 +130,4 @@ KernelSU/
 *patches.sh
 *.gb6
 *.zip
+*dump.txt

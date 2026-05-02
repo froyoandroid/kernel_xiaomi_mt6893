@@ -768,11 +768,20 @@ boost_write(struct cgroup_subsys_state *css, struct cftype *cft,
 		boost = -100;
 
 
-	if (st->css.cgroup) {
+	if (st->css.cgroup && boost == 0) {
 		char name[64];
+		char comm[TASK_COMM_LEN];
+
 		cgroup_name(st->css.cgroup, name, sizeof(name));
-		if (strcmp(name, "top-app") == 0 && boost == 0)
+		get_task_comm(comm, current);
+
+		if (strcmp(name, "top-app") == 0 && (
+		    strstr(comm, "joyose") ||
+		    strstr(comm, "mtkpower") ||
+		    strstr(comm, "perfserv") ||
+		    strstr(comm, "powerhal"))) {
 			boost = 10;
+		}
 	}
 
 	if (boost == 0 && current && !(current->flags & PF_KTHREAD)) {

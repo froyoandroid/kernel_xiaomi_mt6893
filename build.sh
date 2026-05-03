@@ -11,7 +11,7 @@ DATE=$(date '+%Y%m%d-%H%M')
 # Device
 DEVICE="${1:-agate}"
 DEFCONFIG="${DEVICE}_defconfig"
-ZIPNAME="Saving-Private-Kernel-${DEVICE}-${DATE}.zip"
+ZIPNAME="SavingPrivate-Kernel-${DEVICE}-${DATE}.zip"
 
 echo -e "Building for: $DEVICE\n"
 

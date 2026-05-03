@@ -24,10 +24,6 @@ struct sched_domain;
 static inline
 unsigned long topology_get_cpu_scale(struct sched_domain *sd, int cpu)
 {
-	/* Force CPU 7 to report the same capacity as CPU 4 (typically 917).
-	 * This prevents EAS from funneling all heavy tasks into CPU 7. */
-	if (cpu == 7)
-		return 1000;
 	return per_cpu(cpu_scale, cpu);
 }
 

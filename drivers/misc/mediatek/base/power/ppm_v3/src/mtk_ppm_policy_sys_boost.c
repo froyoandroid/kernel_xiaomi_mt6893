@@ -240,15 +240,21 @@ void mt_ppm_sysboost_set_freq_limit(enum ppm_sysboost_user user,
 	 */
 	min_freq = -1;
 
-	if (cluster >= NR_PPM_CLUSTERS) {
-		ppm_err("Invalid input: cluster = %d\n", cluster);
-		return;
+	/* Clamp frequencies to cluster limits instead of rejecting the entire request.
+	 * This prevents mi_thermald from bypassing thermal protection when it sends
+	 * out-of-bounds frequencies for Cluster 0, and eliminates log spam.
+	 */
+	if (cluster < NR_PPM_CLUSTERS) {
+		unsigned int max_limit = get_cluster_max_cpufreq(cluster);
+		unsigned int min_limit = get_cluster_min_cpufreq(cluster);
+
+		if (max_freq != -1 && max_freq > max_limit)
+			max_freq = max_limit;
+		if (min_freq != -1 && min_freq < min_limit)
+			min_freq = min_limit;
 	}
 
-	if ((max_freq != -1 && max_freq > get_cluster_max_cpufreq(cluster))
-		|| (min_freq != -1
-		&& min_freq < get_cluster_min_cpufreq(cluster))
-		|| user >= NR_PPM_SYSBOOST_USER || user < 0) {
+	if (cluster >= NR_PPM_CLUSTERS || user >= NR_PPM_SYSBOOST_USER || user < 0) {
 		ppm_err("Invalid input: user/cl=%d/%d, min/max freq=%d/%d\n",
 			user, cluster, min_freq, max_freq);
 		return;

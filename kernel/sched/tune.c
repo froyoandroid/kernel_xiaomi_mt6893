@@ -898,7 +898,7 @@ schedtune_css_alloc(struct cgroup_subsys_state *parent_css)
 		st->boost = 0;
 		st->prefer_idle = 1;
 	} else if (st->idx == 2) { /* CGROUP_BG */
-		st->boost = -10;
+		st->boost = -20;
 		st->prefer_idle = 0;
 	} else if (st->idx == 3) { /* CGROUP_TA */
 		st->boost = 10;

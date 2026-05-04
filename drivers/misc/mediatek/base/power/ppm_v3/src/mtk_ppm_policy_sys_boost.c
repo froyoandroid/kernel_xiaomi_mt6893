@@ -233,31 +233,22 @@ void mt_ppm_sysboost_set_freq_limit(enum ppm_sysboost_user user,
 {
 	struct ppm_sysboost_data *data;
 
-	/* Selective Enforcement:
-	 * Silently ignore min_freq constraints from userspace (mi_thermald)
-	 * to keep the -1 deep idle hack intact.
-	 * Allow max_freq constraints to restore thermal protection.
-	 */
-	min_freq = -1;
-
-	/* Clamp frequencies to cluster limits instead of rejecting the entire request.
-	 * This prevents mi_thermald from bypassing thermal protection when it sends
-	 * out-of-bounds frequencies for Cluster 0, and eliminates log spam.
-	 */
-	if (cluster < NR_PPM_CLUSTERS) {
-		unsigned int max_limit = get_cluster_max_cpufreq(cluster);
-		unsigned int min_limit = get_cluster_min_cpufreq(cluster);
-
-		if (max_freq != -1 && max_freq > max_limit)
-			max_freq = max_limit;
-		if (min_freq != -1 && min_freq < min_limit)
-			min_freq = min_limit;
-	}
+	/* Drop clearly invalid requests */
+	if (min_freq < -1 || max_freq < -1)
+		return;
 
 	if (cluster >= NR_PPM_CLUSTERS || user >= NR_PPM_SYSBOOST_USER || user < 0) {
 		ppm_err("Invalid input: user/cl=%d/%d, min/max freq=%d/%d\n",
 			user, cluster, min_freq, max_freq);
 		return;
+	}
+
+	/* Clamp to hardware limits */
+	if (cluster < NR_PPM_CLUSTERS) {
+		if (max_freq != -1 && max_freq > get_cluster_max_cpufreq(cluster))
+			max_freq = get_cluster_max_cpufreq(cluster);
+		if (min_freq != -1 && min_freq < get_cluster_min_cpufreq(cluster))
+			min_freq = get_cluster_min_cpufreq(cluster);
 	}
 
 	ppm_info("sys boost by %s: cluster %d min/max freq = %d/%d\n",

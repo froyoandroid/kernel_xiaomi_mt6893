@@ -622,6 +622,9 @@ struct binder_buffer *binder_alloc_new_buf(struct binder_alloc *alloc,
 	size_t size, data_offsets_size;
 	bool notify_rekernel = false;
 
+	/* NOTE: size calculation here must stay in sync with
+	 * binder_alloc_new_buf_locked() to ensure notify_rekernel
+	 * threshold check is accurate. */
 	data_offsets_size = ALIGN(data_size, sizeof(void *)) +
 		ALIGN(offsets_size, sizeof(void *));
 	size = data_offsets_size + ALIGN(extra_buffers_size, sizeof(void *));

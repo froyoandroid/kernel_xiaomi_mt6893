@@ -2779,7 +2779,8 @@ static int mtk_vdec_s_ctrl(struct v4l2_ctrl *ctrl)
 	case V4L2_CID_MPEG_MTK_INTERLACING:
 	case V4L2_CID_MPEG_MTK_CODEC_TYPE:
 	case V4L2_CID_MPEG_MTK_COLOR_DESC:
-		/* satisfy userspace set request */
+		/* Control acknowledged. Color description metadata
+		 * is handled by userspace HAL on this platform. */
 		break;
 	default:
 		mtk_v4l2_err("ctrl-id=%x not support!", ctrl->id);

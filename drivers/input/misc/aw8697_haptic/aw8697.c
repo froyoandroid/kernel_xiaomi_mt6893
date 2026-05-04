@@ -12,7 +12,6 @@
  * Free Software Foundation;  either version 2 of the  License, or (at your
  * option) any later version.
  */
-#define DEBUG
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/i2c.h>
@@ -3117,7 +3116,7 @@ static int aw8697_haptics_upload_effect(struct input_dev *dev,
 	if (hrtimer_active(&aw8697->timer)) {
 		rem = hrtimer_get_remaining(&aw8697->timer);
 		time_us = ktime_to_us(rem);
-		printk("waiting for playing clear sequence: %lld us\n",
+		pr_debug("waiting for playing clear sequence: %lld us\n",
 			time_us);
 		usleep_range(time_us, time_us + 100);
 	}

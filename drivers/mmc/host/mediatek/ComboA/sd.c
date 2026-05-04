@@ -5246,6 +5246,12 @@ static int msdc_drv_probe(struct platform_device *pdev)
 	void __iomem *base = NULL;
 	int ret = 0;
 
+	/* Respect DTS status = "disabled" */
+	if (!of_device_is_available(pdev->dev.of_node)) {
+		dev_dbg(&pdev->dev, "msdc disabled in DTS, skipping probe\n");
+		return -ENODEV;
+	}
+
 	/* Allocate MMC host for this device */
 	mmc = mmc_alloc_host(sizeof(struct msdc_host), &pdev->dev);
 	if (!mmc)

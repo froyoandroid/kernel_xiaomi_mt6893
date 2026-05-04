@@ -233,6 +233,11 @@ void mt_ppm_sysboost_set_freq_limit(enum ppm_sysboost_user user,
 {
 	struct ppm_sysboost_data *data;
 
+	if (min_freq < 0 || max_freq < 0) {
+		/* Silently ignore invalid frequency requests from thermal daemon */
+		return;
+	}
+
 	if (cluster >= NR_PPM_CLUSTERS) {
 		ppm_err("Invalid input: cluster = %d\n", cluster);
 		return;

@@ -43,6 +43,7 @@ DEFINE_STATIC_KEY_TRUE(susfs_is_log_enabled);
 DEFINE_STATIC_SRCU(susfs_srcu_sus_path_loop);
 static DEFINE_MUTEX(susfs_mutex_lock_sus_path);
 static LIST_HEAD(LH_SUS_PATH_LOOP);
+
 const struct qstr susfs_fake_qstr_name = QSTR_INIT("..5.u.S", 7); // used to re-test the dcache lookup, make sure you don't have file named like this!!
 
 void susfs_add_sus_path(void __user **user_info) {
@@ -1483,7 +1484,7 @@ static void susfs_run_extra_works(struct work_struct *work) {
 }
 
 /* susfs_init */
-void susfs_init(void) {\
+void susfs_init(void) {
 	SUSFS_LOGI("Initializing susfs_extra_works\n");
 	INIT_WORK(&susfs_extra_works, susfs_run_extra_works);
 	SUSFS_LOGI("susfs is initialized! version: " SUSFS_VERSION " \n");

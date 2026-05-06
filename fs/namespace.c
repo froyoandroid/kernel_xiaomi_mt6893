@@ -190,6 +190,7 @@ void mnt_release_group_id(struct mount *mnt)
 {
 	int id = mnt->mnt_group_id;
 
+
 	ida_remove(&mnt_group_ida, id);
 	if (mnt_group_start > id)
 		mnt_group_start = id;
@@ -1186,13 +1187,9 @@ vfs_kern_mount(struct file_system_type *type, int flags, const char *name, void 
 		return ERR_PTR(-ENODEV);
 
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-	// - We will just stop checking for ksu process if /sdcard/Android is accessible,
-	//   for the sake of performance
-	if (static_branch_unlikely(&susfs_is_sdcard_android_data_not_decrypted)) {
-		if (susfs_is_current_ksu_domain()) {
-			mnt = susfs_alloc_non_unshare_ksu_vfsmnt(name ?:"none");
-			goto bypass_orig_flow;
-		}
+	if (susfs_is_current_ksu_domain()) {
+		mnt = susfs_alloc_non_unshare_ksu_vfsmnt(name);
+		goto bypass_orig_flow;
 	}
 #endif
 
@@ -3860,6 +3857,8 @@ struct vfsmount *susfs_get_non_sus_vfsmnt_from_vfsmnt(struct vfsmount *vfsmnt) {
 	if (!mnt->mnt.mnt_root || IS_ERR(mnt->mnt.mnt_root)) {
 		mntput(&mnt->mnt);
 		unlock_mount_hash();
+		mntget(vfsmnt);
+		dget(vfsmnt->mnt_root);
 		return vfsmnt;
 	}
 	dget(mnt->mnt.mnt_root);

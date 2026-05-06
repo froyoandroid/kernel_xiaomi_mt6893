@@ -7,7 +7,7 @@ DATE=$(date '+%Y%m%d-%H%M')
 # Device
 DEVICE="${1:-agate}"
 DEFCONFIG="${DEVICE}_defconfig"
-ZIPNAME="Invincible-Chopin-${DEVICE}-${DATE}.zip"
+ZIPNAME="Invincible-${DEVICE}-${DATE}.zip"
 
 echo -e "Building for: $DEVICE\n"
 

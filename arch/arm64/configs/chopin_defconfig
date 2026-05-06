@@ -254,7 +254,6 @@ CONFIG_DM_DEFAULT_KEY=y
 CONFIG_DM_UEVENT=y
 CONFIG_DM_VERITY_FEC=y
 CONFIG_IFB=y
-CONFIG_WIREGUARD=y
 # CONFIG_ETHERNET is not set
 CONFIG_PPP_FILTER=y
 CONFIG_PPP_MULTILINK=y
@@ -501,7 +500,7 @@ CONFIG_KPM=y
 CONFIG_KALLSYMS=y
 CONFIG_KALLSYMS_ALL=y
 CONFIG_KALLSYMS_BASE_RELATIVE=y
-BasebandGuard
+# BasebandGuard
 CONFIG_BBG=y
 CONFIG_LSM="lockdown,yama,loadpin,safesetid,integrity,selinux,smack,tomoyo,apparmor,bpf,baseband_guard"
 # WireGuard

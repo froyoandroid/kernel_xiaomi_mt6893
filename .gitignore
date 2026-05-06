@@ -125,4 +125,10 @@ all.config
 
 # fetched Android config fragments
 kernel/configs/android-*.cfg
-
+out/
+KernelSU/
+*patches.sh
+*.gb6
+*.zip
+*dump.txt
+exhorizon_logs/

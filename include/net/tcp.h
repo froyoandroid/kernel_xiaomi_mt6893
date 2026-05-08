@@ -774,6 +774,11 @@ static inline u32 tcp_stamp_us_delta(u64 t1, u64 t0)
 	return max_t(s64, t1 - t0, 0);
 }
 
+static inline u32 tcp_stamp32_us_delta(u32 t1, u32 t0)
+{
+	return max_t(s32, t1 - t0, 0);
+}
+
 static inline u32 tcp_skb_timestamp(const struct sk_buff *skb)
 {
 	return div_u64(skb->skb_mstamp, USEC_PER_SEC / TCP_TS_HZ);
@@ -840,8 +845,8 @@ struct tcp_skb_cb {
 			unused:5;
 	__u32		ack_seq;	/* Sequence number ACK'd	*/
 	union {
-			struct  {
-			#define TCPCB_DELIVERED_CE_MASK ((1U<<20) - 1)
+		struct  {
+#define TCPCB_DELIVERED_CE_MASK ((1U << 20) - 1)
 			/* There is space for up to 24 bytes */
 			__u32 is_app_limited:1, /* cwnd not fully used? */
 			      delivered_ce:20,
@@ -1027,10 +1032,12 @@ struct ack_sample {
 struct rate_sample {
 	u64  prior_mstamp; /* starting timestamp for interval */
 	u32  prior_delivered;	/* tp->delivered at "prior_mstamp" */
-    u32 tx_in_flight;	/* packets in flight at starting timestamp */
+	u32  prior_lost;	/* tp->lost at "prior_mstamp" */
+	u32  prior_delivered_ce;/* tp->delivered_ce at "prior_mstamp" */
+	u32  tx_in_flight;	/* packets in flight at starting timestamp */
 	s32  lost;		/* number of packets lost over interval */
 	s32  delivered;		/* number of packets delivered over interval */
-    s32  delivered_ce;	/* packets delivered w/ CE mark over interval */
+	s32  delivered_ce;	/* packets delivered w/ CE mark over interval */
 	long interval_us;	/* time for tp->delivered to incr "delivered" */
 	long rtt_us;		/* RTT of last (S)ACKed packet (or -1) */
 	int  losses;		/* number of packets marked lost upon ACK */
@@ -1038,7 +1045,7 @@ struct rate_sample {
 	u32  prior_in_flight;	/* in flight before this ACK */
 	bool is_app_limited;	/* is sample from packet with bubble in pipe? */
 	bool is_retrans;	/* is sample from retransmission? */
-    bool is_ack_delayed;	/* is this (likely) a delayed ACK? */
+	bool is_ack_delayed;	/* is this (likely) a delayed ACK? */
 	bool is_ece;		/* did this ACK have ECN marked? */
 };
 

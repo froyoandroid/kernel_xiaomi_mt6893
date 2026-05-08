@@ -1079,6 +1079,14 @@ static void tcp_skb_mark_lost(struct tcp_sock *tp, struct sk_buff *skb)
 	}
 }
 
+static void tcp_ca_skb_marked_lost(struct sock *sk, const struct sk_buff *skb)
+{
+	const struct tcp_congestion_ops *ca_ops = inet_csk(sk)->icsk_ca_ops;
+
+	if (ca_ops->skb_marked_lost)
+		ca_ops->skb_marked_lost(sk, skb);
+}
+
 void tcp_skb_mark_lost_uncond_verify(struct tcp_sock *tp, struct sk_buff *skb)
 {
 	tcp_verify_retransmit_hint(tp, skb);
@@ -2391,6 +2399,7 @@ static void tcp_mark_head_lost(struct sock *sk, int packets, int mark_head)
 		}
 
 		tcp_skb_mark_lost(tp, skb);
+		tcp_ca_skb_marked_lost(sk, skb);
 
 		if (mark_head)
 			break;
@@ -2789,6 +2798,7 @@ void tcp_simple_retransmit(struct sock *sk)
 				tp->retrans_out -= tcp_skb_pcount(skb);
 			}
 			tcp_skb_mark_lost_uncond_verify(tp, skb);
+			tcp_ca_skb_marked_lost(sk, skb);
 		}
 	}
 
@@ -3873,6 +3883,8 @@ static int tcp_ack(struct sock *sk, const struct sk_buff *skb, int flag)
 	delivered = tcp_newly_delivered(sk, delivered, flag);
 	lost = tp->lost - lost;			/* freshly marked lost */
 	tcp_rate_gen(sk, delivered, lost, is_sack_reneg, sack_state.rate);
+	rs.is_ece = !!(flag & FLAG_ECE);
+	rs.is_ack_delayed = delivered > 1;
 	tcp_cong_control(sk, ack, delivered, flag, sack_state.rate);
 	tcp_xmit_recovery(sk, rexmit);
 	return 1;

@@ -1002,7 +1002,6 @@ enum tcp_ca_ack_event_flags {
 #define TCP_CONG_NON_RESTRICTED 0x1
 /* Requires ECN/ECT set on all packets */
 #define TCP_CONG_NEEDS_ECN	0x2
-#define TCP_CONG_MASK	(TCP_CONG_NON_RESTRICTED | TCP_CONG_NEEDS_ECN)
 
 #define TCP_CONG_WANTS_CE_EVENTS	0x4
 #define TCP_CONG_MASK	(TCP_CONG_NON_RESTRICTED | \

@@ -175,7 +175,7 @@ void tcp_assign_congestion_control(struct sock *sk)
 
 void tcp_init_congestion_control(struct sock *sk)
 {
-	const struct inet_connection_sock *icsk = inet_csk(sk);
+	struct inet_connection_sock *icsk = inet_csk(sk);
         struct tcp_congestion_ops *ca;
 
         /* 1. Force find the BBR operations */

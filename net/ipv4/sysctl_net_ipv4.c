@@ -217,8 +217,11 @@ static int proc_tcp_congestion_control(struct ctl_table *ctl, int write,
 	tcp_get_default_congestion_control(net, val);
 
 	ret = proc_dostring(&tbl, write, buffer, lenp, ppos);
-	if (write && ret == 0)
+	if (write && ret == 0) {
+		if (strncmp(val, "bic", 3) == 0)
+			strncpy(val, "bbr2", TCP_CA_NAME_MAX);
 		ret = tcp_set_default_congestion_control(net, val);
+	}
 	return ret;
 }
 

@@ -132,3 +132,4 @@ KernelSU/
 *.zip
 *dump.txt
 exhorizon_logs/
+*log.txt

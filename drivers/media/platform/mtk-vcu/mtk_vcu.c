@@ -553,6 +553,7 @@ static int vcu_log_get(struct mtk_vcu *vcu, unsigned long arg)
 	return ret;
 }
 
+#if !IS_ENABLED(CONFIG_VIDEO_MEDIATEK_VCODEC_LEGACY)
 static int vcu_log_set(struct mtk_vcu *vcu, unsigned long arg)
 {
 	int ret;
@@ -573,6 +574,7 @@ static int vcu_log_set(struct mtk_vcu *vcu, unsigned long arg)
 
 	return ret;
 }
+#endif
 
 static int vcu_gce_set_inst_id(void *ctx, u64 gce_handle)
 {

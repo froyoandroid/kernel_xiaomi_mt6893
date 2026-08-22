@@ -20,7 +20,16 @@
 #endif
 
 struct CcuMemInfo {
+#ifndef _XIAOMI_CHOPIN_
+	/*
+	 * Chopin's vendor lib3a.ccudrv.so predates this field and passes the
+	 * stock layout, which starts at shareFd. Keeping chksum here would
+	 * shift every field the caller writes by one word and make the
+	 * CCU_IOCTL_ALLOC_MEM checksum gate in ccu_drv.c reject every
+	 * request. See ccu_drv.c for details.
+	 */
 	unsigned int chksum;
+#endif
 	int shareFd;
 	char *va;
 	unsigned int align_mva;

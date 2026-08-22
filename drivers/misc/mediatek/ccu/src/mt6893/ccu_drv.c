@@ -116,6 +116,7 @@ static irqreturn_t ccu_isr_callback_xxx(int irq, void *device_id)
 	return IRQ_HANDLED;
 }
 
+#ifndef _XIAOMI_CHOPIN_
 static uint32_t get_checksum(uint8_t *data, uint32_t size)
 {
 	uint32_t i, val, tv, sz, *ptr;
@@ -133,6 +134,7 @@ static uint32_t get_checksum(uint8_t *data, uint32_t size)
 
 	return val;
 }
+#endif
 
 #ifdef CONFIG_MTK_QOS_SUPPORT_ENABLE
 static struct mtk_pm_qos_request _ccu_qos_request;
@@ -990,7 +992,9 @@ static long ccu_ioctl(struct file *flip, unsigned int cmd,
 	case CCU_IOCTL_ALLOC_MEM:
 	{
 		struct CcuMemHandle handle;
+#ifndef _XIAOMI_CHOPIN_
 		uint32_t cs;
+#endif
 
 		handle.ionHandleKd = 0;
 		ret = copy_from_user(&(handle.meminfo),
@@ -1002,12 +1006,14 @@ static long ccu_ioctl(struct file *flip, unsigned int cmd,
 			break;
 		}
 
+#ifndef _XIAOMI_CHOPIN_
 		cs = get_checksum((uint8_t *)&(handle.meminfo.shareFd),
 			sizeof(struct CcuMemInfo) - sizeof(unsigned int));
 		if (cs != handle.meminfo.chksum) {
 			ret = -EINVAL;
 			break;
 		}
+#endif
 
 		ret = ccu_allocate_mem(&handle, handle.meminfo.size,
 			handle.meminfo.cached);
@@ -1023,7 +1029,9 @@ static long ccu_ioctl(struct file *flip, unsigned int cmd,
 	case CCU_IOCTL_DEALLOC_MEM:
 	{
 		struct CcuMemHandle handle;
+#ifndef _XIAOMI_CHOPIN_
 		uint32_t cs;
+#endif
 
 		ret = copy_from_user(&(handle.meminfo),
 			(void *)arg, sizeof(struct CcuMemInfo));
@@ -1034,12 +1042,14 @@ static long ccu_ioctl(struct file *flip, unsigned int cmd,
 			break;
 		}
 
+#ifndef _XIAOMI_CHOPIN_
 		cs = get_checksum((uint8_t *)&(handle.meminfo.shareFd),
 				sizeof(struct CcuMemInfo) - sizeof(unsigned int));
 		if (cs != handle.meminfo.chksum) {
 			ret = -EINVAL;
 			break;
 		}
+#endif
 
 		ret = ccu_deallocate_mem(&handle);
 		if (ret != 0) {

@@ -293,8 +293,10 @@ static int mtk_compr_offload_drain(struct snd_compr_stream *stream)
 					AUDIO_IPI_PAYLOAD,
 					AUDIO_IPI_MSG_BYPASS_ACK,
 					AUDIO_DSP_TASK_DLCOPY,
-					sizeof(dsp->dsp_mem[ID].msg_atod_share_buf.phy_addr),
-					0,
+					AUDIO_IPI_SHAREMEM_PARAM1(
+					dsp->dsp_mem[ID].msg_atod_share_buf.phy_addr),
+					AUDIO_IPI_SHAREMEM_PARAM2(
+					dsp->dsp_mem[ID].msg_atod_share_buf.phy_addr),
 					(char *)
 					&dsp->dsp_mem[ID].msg_atod_share_buf.phy_addr);
 			pr_debug("%s(),MSG_DECODER_START, Update the final data, TRANSFERRED %lld\n",
@@ -469,8 +471,10 @@ static int mtk_compr_offload_set_params(struct snd_compr_stream *stream,
 	mtk_scp_ipi_send(get_dspscene_by_dspdaiid(ID),
 			 AUDIO_IPI_PAYLOAD,
 			 AUDIO_IPI_MSG_NEED_ACK, AUDIO_DSP_TASK_HWPARAM,
-			 sizeof(dsp->dsp_mem[ID].msg_atod_share_buf.phy_addr),
-			 0,
+			 AUDIO_IPI_SHAREMEM_PARAM1(
+			 dsp->dsp_mem[ID].msg_atod_share_buf.phy_addr),
+			 AUDIO_IPI_SHAREMEM_PARAM2(
+			 dsp->dsp_mem[ID].msg_atod_share_buf.phy_addr),
 			 (char *)
 			 &dsp->dsp_mem[ID].msg_atod_share_buf.phy_addr);
 
@@ -746,8 +750,10 @@ static int offloadservice_copydatatoram(void __user *buf, size_t count)
 				AUDIO_IPI_PAYLOAD,
 				AUDIO_IPI_MSG_BYPASS_ACK,
 				AUDIO_DSP_TASK_DLCOPY,
-				sizeof(dsp->dsp_mem[ID].msg_atod_share_buf.phy_addr),
-				0,
+				AUDIO_IPI_SHAREMEM_PARAM1(
+				dsp->dsp_mem[ID].msg_atod_share_buf.phy_addr),
+				AUDIO_IPI_SHAREMEM_PARAM2(
+				dsp->dsp_mem[ID].msg_atod_share_buf.phy_addr),
 				(char *)
 				&dsp->dsp_mem[ID].msg_atod_share_buf.phy_addr);
 #ifdef DEBUG_VERBOSE

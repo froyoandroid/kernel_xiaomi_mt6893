@@ -1319,8 +1319,10 @@ static int mtk_dsp_pcm_hw_params(struct snd_pcm_substream *substream,
 	/* send to task with hw_param information , buffer and pcm attribute */
 	mtk_scp_ipi_send(get_dspscene_by_dspdaiid(id), AUDIO_IPI_PAYLOAD,
 			 AUDIO_IPI_MSG_NEED_ACK, AUDIO_DSP_TASK_HWPARAM,
-			 sizeof(dsp->dsp_mem[id].msg_atod_share_buf.phy_addr),
-			 0,
+			 AUDIO_IPI_SHAREMEM_PARAM1(
+			 dsp->dsp_mem[id].msg_atod_share_buf.phy_addr),
+			 AUDIO_IPI_SHAREMEM_PARAM2(
+			 dsp->dsp_mem[id].msg_atod_share_buf.phy_addr),
 			 (char *)&dsp->dsp_mem[id].msg_atod_share_buf.phy_addr);
 
 	return ret;
@@ -1417,8 +1419,10 @@ static int mtk_dsp_pcm_hw_prepare(struct snd_pcm_substream *substream)
 	/* send to task with prepare status */
 	mtk_scp_ipi_send(get_dspscene_by_dspdaiid(id), AUDIO_IPI_PAYLOAD,
 			 AUDIO_IPI_MSG_NEED_ACK, AUDIO_DSP_TASK_PREPARE,
-			 sizeof(dsp->dsp_mem[id].msg_atod_share_buf.phy_addr),
-			 0,
+			 AUDIO_IPI_SHAREMEM_PARAM1(
+			 dsp->dsp_mem[id].msg_atod_share_buf.phy_addr),
+			 AUDIO_IPI_SHAREMEM_PARAM2(
+			 dsp->dsp_mem[id].msg_atod_share_buf.phy_addr),
 			 (char *)&dsp->dsp_mem[id].msg_atod_share_buf.phy_addr);
 	return ret;
 }
@@ -1554,8 +1558,10 @@ static int mtk_dsp_pcm_copy_dl(struct snd_pcm_substream *substream,
 	ret = mtk_scp_ipi_send(
 			get_dspscene_by_dspdaiid(id), AUDIO_IPI_PAYLOAD,
 			ack_type, AUDIO_DSP_TASK_DLCOPY,
-			sizeof(dsp_mem->msg_atod_share_buf.phy_addr),
-			0,
+			AUDIO_IPI_SHAREMEM_PARAM1(
+			dsp_mem->msg_atod_share_buf.phy_addr),
+			AUDIO_IPI_SHAREMEM_PARAM2(
+			dsp_mem->msg_atod_share_buf.phy_addr),
 			(char *)&dsp_mem->msg_atod_share_buf.phy_addr);
 
 	return ret;
@@ -1608,8 +1614,10 @@ static int mtk_dsp_pcm_copy_ul(struct snd_pcm_substream *substream,
 	ret = mtk_scp_ipi_send(
 			get_dspscene_by_dspdaiid(id), AUDIO_IPI_PAYLOAD,
 			AUDIO_IPI_MSG_NEED_ACK, AUDIO_DSP_TASK_ULCOPY,
-			sizeof(dsp_mem->msg_atod_share_buf.phy_addr),
-			0,
+			AUDIO_IPI_SHAREMEM_PARAM1(
+			dsp_mem->msg_atod_share_buf.phy_addr),
+			AUDIO_IPI_SHAREMEM_PARAM2(
+			dsp_mem->msg_atod_share_buf.phy_addr),
 			(char *)&dsp_mem->msg_atod_share_buf.phy_addr);
 
 #ifdef DEBUG_VERBOSE

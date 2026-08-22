@@ -394,8 +394,10 @@ int afe_pcm_ipi_to_dsp(int command, struct snd_pcm_substream *substream,
 				 AUDIO_IPI_PAYLOAD,
 				 AUDIO_IPI_MSG_NEED_ACK,
 				 AUDIO_DSP_TASK_PCM_HWPARAM,
-				 sizeof(dsp_memif->msg_atod_share_buf.phy_addr),
-				 0,
+				 AUDIO_IPI_SHAREMEM_PARAM1(
+				 dsp_memif->msg_atod_share_buf.phy_addr),
+				 AUDIO_IPI_SHAREMEM_PARAM2(
+				 dsp_memif->msg_atod_share_buf.phy_addr),
 				 (char *)
 				 &dsp_memif->msg_atod_share_buf.phy_addr);
 		break;
@@ -422,8 +424,10 @@ int afe_pcm_ipi_to_dsp(int command, struct snd_pcm_substream *substream,
 				       AUDIO_IPI_PAYLOAD,
 				       AUDIO_IPI_MSG_NEED_ACK,
 				       AUDIO_DSP_TASK_PCM_PREPARE,
-				       sizeof(dsp_memif->msg_atod_share_buf.phy_addr),
-				       0,
+				       AUDIO_IPI_SHAREMEM_PARAM1(
+				       dsp_memif->msg_atod_share_buf.phy_addr),
+				       AUDIO_IPI_SHAREMEM_PARAM2(
+				       dsp_memif->msg_atod_share_buf.phy_addr),
 				       (char *)
 				       &dsp_memif->msg_atod_share_buf.phy_addr);
 		break;

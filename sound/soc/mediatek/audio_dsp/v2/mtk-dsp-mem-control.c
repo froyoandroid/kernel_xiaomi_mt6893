@@ -685,7 +685,11 @@ int init_mtk_adsp_dram_segment(void)
 int set_mtk_adsp_mpu_sharedram(unsigned int dram_segment)
 {
 	struct ipi_msg_t ipi_msg;
+#if IS_ENABLED(CONFIG_MTK_AUDIODSP_LEGACY)
+	unsigned int phy_addr, size;
+#else
 	unsigned long long payload_buf[2];
+#endif
 	int ret;
 
 	if (dram_segment >= AUDIO_DSP_SHARE_MEM_NUM) {
@@ -695,6 +699,18 @@ int set_mtk_adsp_mpu_sharedram(unsigned int dram_segment)
 
 	adsp_register_feature(AUDIO_CONTROLLER_FEATURE_ID);
 
+#if IS_ENABLED(CONFIG_MTK_AUDIODSP_LEGACY)
+	phy_addr = (unsigned int)dsp_dram_buffer[dram_segment].phy_addr;
+	size = (unsigned int)dsp_dram_buffer[dram_segment].size;
+
+	pr_info("%s phy_addr[0x%x] size[0x%x]\n", __func__, phy_addr, size);
+
+	ret = audio_send_ipi_msg(
+		&ipi_msg, TASK_SCENE_AUD_DAEMON_A,
+		AUDIO_IPI_LAYER_TO_DSP, AUDIO_IPI_MSG_ONLY,
+		AUDIO_IPI_MSG_BYPASS_ACK, AUDIO_DSP_TASK_EINGBUFASHAREMEM,
+		phy_addr, size, 0);
+#else
 	pr_info("%s size[0x%llx]\n", __func__,
 		dsp_dram_buffer[dram_segment].size);
 	payload_buf[0] = dsp_dram_buffer[dram_segment].phy_addr;
@@ -705,6 +721,7 @@ int set_mtk_adsp_mpu_sharedram(unsigned int dram_segment)
 		AUDIO_IPI_LAYER_TO_DSP, AUDIO_IPI_PAYLOAD,
 		AUDIO_IPI_MSG_BYPASS_ACK, AUDIO_DSP_TASK_EINGBUFASHAREMEM,
 		sizeof(payload_buf), 0, (void *)payload_buf);
+#endif
 
 	adsp_deregister_feature(AUDIO_CONTROLLER_FEATURE_ID);
 

@@ -29,6 +29,23 @@
 #define MAX_IPI_MSG_PAYLOAD_SIZE (MAX_IPI_MSG_BUF_SIZE - IPI_MSG_HEADER_SIZE)
 #define MAX_DSP_DMA_WRITE_SIZE   (0x20000)
 
+/*
+ * param1/param2 shape for an AUDIO_IPI_PAYLOAD message whose payload is the
+ * physical address of an AP-to-DSP share buffer.
+ *
+ * Legacy audio firmware predates 891cc505ff5f ("[ALPS06433474] adsp: Fix ipi
+ * message type") and reads the address out of param2 as a 32-bit value, with
+ * param1 carrying sizeof(unsigned int). Newer firmware reads the full 64-bit
+ * address from the payload and ignores param2.
+ */
+#if IS_ENABLED(CONFIG_MTK_AUDIODSP_LEGACY)
+#define AUDIO_IPI_SHAREMEM_PARAM1(addr) sizeof(unsigned int)
+#define AUDIO_IPI_SHAREMEM_PARAM2(addr) ((unsigned int)(addr))
+#else
+#define AUDIO_IPI_SHAREMEM_PARAM1(addr) sizeof(addr)
+#define AUDIO_IPI_SHAREMEM_PARAM2(addr) 0
+#endif
+
 #define IPI_MSG_MAGIC_NUMBER     (0x8888)
 
 

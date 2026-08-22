@@ -36,8 +36,17 @@
 
 #ifdef CONFIG_SND_SOC_CS35L41
 #include "../../codecs/cs35l41/cs35l41_ext.h"
+#ifdef CONFIG_SND_SOC_CS35L41_CHOPIN
+/*
+ * Chopin wires both CS35L41 amplifiers to I2C6, so the ASoC component names
+ * built by fmt_single_name() are speaker_amp.6-00{40,42}. Agate uses I2C7.
+ */
+#define CS35L41_SPEAKER_NAME "speaker_amp.6-0040"
+#define CS35L41_RECEIVER_NAME "speaker_amp.6-0042"
+#else
 #define CS35L41_SPEAKER_NAME "speaker_amp.7-0040"
 #define CS35L41_RECEIVER_NAME "speaker_amp.7-0042"
+#endif
 
 static struct snd_soc_dai_link_component cs35l41_dai_link_component[] =
 {

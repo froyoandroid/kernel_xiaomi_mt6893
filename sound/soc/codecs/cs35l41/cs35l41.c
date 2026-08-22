@@ -277,6 +277,65 @@ static int cs35l41_rcv_swtich_get(struct snd_kcontrol *kcontrol,
 }
 #endif
 
+#ifdef CONFIG_SND_SOC_CS35L41_CHOPIN
+/*
+ * Chopin shares one external receiver switch GPIO between both amplifiers, so
+ * whichever instance wins devm_gpiod_get_optional() owns it and the other gets
+ * -EBUSY. Unlike Pissarro the control is therefore not gated on
+ * cirrus,tuning-has-prefix.
+ */
+static int cs35l41_rcv_swtich_put(struct snd_kcontrol *kcontrol,
+							struct snd_ctl_elem_value *ucontrol)
+{
+	int 	ret = 0;
+
+	struct snd_soc_component *component = snd_soc_kcontrol_component(kcontrol);
+	struct cs35l41_private *cs35l41 = snd_soc_component_get_drvdata(component);
+	int external_switch = ucontrol->value.integer.value[0];
+
+	if (!IS_ERR_OR_NULL(cs35l41->external_switch)) {
+		if (external_switch == 1) {
+			gpiod_set_value_cansleep(cs35l41->external_switch, 1);
+		} else if (external_switch == 0) {
+			gpiod_set_value_cansleep(cs35l41->external_switch, 0);
+		} else {
+			ret = -EINVAL;
+		}
+	} else {
+		dev_info(cs35l41->dev, "%s: RCV Switch failed to get gpio\n",
+			 __func__);
+	}
+	return ret;
+};
+
+static int cs35l41_rcv_swtich_get(struct snd_kcontrol *kcontrol,
+							struct snd_ctl_elem_value *ucontrol)
+{
+	int 	ret = 0;
+
+	struct snd_soc_component *component = snd_soc_kcontrol_component(kcontrol);
+	struct cs35l41_private *cs35l41 = snd_soc_component_get_drvdata(component);
+	int external_switch = 0;
+
+	if (!IS_ERR_OR_NULL(cs35l41->external_switch)) {
+		external_switch = gpiod_get_value(cs35l41->external_switch);
+		if (external_switch == 1) {
+			ucontrol->value.integer.value[0] = 1;
+		} else if (external_switch == 0) {
+			ucontrol->value.integer.value[0] = 0;
+		} else {
+			dev_info(cs35l41->dev,
+				 "%s: RCV Switch gpio get value failed\n",
+				 __func__);
+		}
+	} else {
+		dev_info(cs35l41->dev, "%s: RCV Switch failed to get gpio\n",
+			 __func__);
+	}
+	return ret;
+}
+#endif
+
 static int cs35l41_fast_switch_en_get(struct snd_kcontrol *kcontrol,
 				      struct snd_ctl_elem_value *ucontrol)
 {
@@ -760,6 +819,10 @@ static const struct snd_kcontrol_new cs35l41_aud_controls[] = {
 	WM_ADSP2_PRELOAD_SWITCH("DSP1", 1),
 #ifdef CONFIG_SND_SOC_CS35L41_PISSARRO//CONFIG_PRODUCT_PISSARRO
 	SOC_SINGLE_EXT("Switch", SND_SOC_NOPM, 0, 1, 0,
+			cs35l41_rcv_swtich_get, cs35l41_rcv_swtich_put),
+#endif
+#ifdef CONFIG_SND_SOC_CS35L41_CHOPIN
+	SOC_SINGLE_EXT("RCV Switch", SND_SOC_NOPM, 0, 1, 0,
 			cs35l41_rcv_swtich_get, cs35l41_rcv_swtich_put),
 #endif
 
@@ -2481,6 +2544,27 @@ int cs35l41_probe(struct cs35l41_private *cs35l41,
 		cs35l41->external_switch = NULL;
 		dev_info(cs35l41->dev,
 			"Only rcv driver need to initialize external switch\n");
+	}
+#endif
+#ifdef CONFIG_SND_SOC_CS35L41_CHOPIN
+	/*
+	 * Both Chopin amplifiers point switch-gpio at the same pin, so the
+	 * second probe legitimately sees -EBUSY. Treat that as a shared switch
+	 * instead of failing the probe.
+	 */
+	cs35l41->external_switch = devm_gpiod_get_optional(cs35l41->dev,
+							"switch", GPIOD_OUT_LOW);
+	if (IS_ERR(cs35l41->external_switch)) {
+		ret = PTR_ERR(cs35l41->external_switch);
+		cs35l41->external_switch = NULL;
+		if (ret == -EBUSY) {
+			dev_info(cs35l41->dev,
+				 "Switch line busy, assuming shared switch\n");
+		} else {
+			dev_err(cs35l41->dev,
+				"Failed to get switch GPIO: %d\n", ret);
+			goto err;
+		}
 	}
 #endif
 	do {

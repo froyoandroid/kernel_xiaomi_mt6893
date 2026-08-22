@@ -26,8 +26,14 @@
 #define EXT_SPK_AMP_W_NAME "Ext_Speaker_Amp"
 
 #ifdef CONFIG_SND_SOC_CS35L41
+#ifdef CONFIG_SND_SOC_CS35L41_CHOPIN
+/* Chopin places both amplifiers on I2C6; Agate uses I2C7. */
+#define CS35L41_SPEAKER_NAME "speaker_amp.6-0040"
+#define CS35L41_RECEIVER_NAME "speaker_amp.6-0042"
+#else
 #define CS35L41_SPEAKER_NAME "speaker_amp.7-0040"
 #define CS35L41_RECEIVER_NAME "speaker_amp.7-0042"
+#endif
 static struct snd_soc_codec_conf cs35l41_codec_conf[] = {
 	{
 		.dev_name	= CS35L41_RECEIVER_NAME,

@@ -195,4 +195,11 @@ obj-$(CONFIG_MTK_FREQ_HOPPING) += freqhopping/
 obj-$(CONFIG_ARCH_MEDIATEK) += mboot_params/
 
 subdir-ccflags-y += -D_XIAOMI_
+
+ifeq ($(CONFIG_BUILD_XIAOMI_CAMERA_IMAGE_NAMES),"mediatek/chopin")
+subdir-ccflags-y += -D_XIAOMI_CHOPIN_
+endif
+
+ifeq ($(CONFIG_BUILD_XIAOMI_CAMERA_IMAGE_NAMES),"mediatek/agate")
 subdir-ccflags-y += -D_XIAOMI_AGATE_
+endif

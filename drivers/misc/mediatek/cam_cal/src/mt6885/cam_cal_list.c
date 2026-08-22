@@ -37,6 +37,12 @@ struct stCAM_CAL_LIST_STRUCT g_camCalList[] = {
 		BL24SA64_write_region},
 #endif
 	{AGATES5KHM2_SENSOR_ID, 0xA2, Common_read_region, DEFAULT_MAX_EEPROM_SIZE_16K},
+#ifdef _XIAOMI_CHOPIN_
+	{OV64B40SUNNY_SENSOR_ID, 0xA2, Common_read_region, DEFAULT_MAX_EEPROM_SIZE_16K},
+	{OV16A1QOFILM_SENSOR_ID, 0xA2, Common_read_region, DEFAULT_MAX_EEPROM_SIZE_16K},
+	{GC02M1SUNNY_SENSOR_ID, 0xA4, Common_read_region, DEFAULT_MAX_EEPROM_SIZE_16K},
+	{IMX355SUNNY_SENSOR_ID, 0xA0, Common_read_region, DEFAULT_MAX_EEPROM_SIZE_16K},
+#endif
 	/*  ADD before this line */
 	{0, 0, 0}       /*end of list */
 };

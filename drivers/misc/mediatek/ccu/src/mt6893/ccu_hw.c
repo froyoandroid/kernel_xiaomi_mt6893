@@ -18,8 +18,10 @@
 #include <linux/spinlock.h>
 #include <linux/iommu.h>
 #include <linux/firmware.h>
+#ifndef _XIAOMI_CHOPIN_
 #include <crypto/hash.h>
 #include <crypto/akcipher.h>
+#endif
 
 #include "mtk_ion.h"
 #include "ion_drv.h"
@@ -35,7 +37,9 @@
 #include <linux/io.h> /*for mb();*/
 
 #include "ccu_hw.h"
+#ifndef _XIAOMI_CHOPIN_
 #include "ccu_fw_pubk.h"
+#endif
 #include "ccu_reg.h"
 #include "ccu_cmn.h"
 #include "ccu_kd_mailbox.h"
@@ -66,10 +70,12 @@ struct ap_task_manage_t {
 	struct list_head ApTskWorkList;
 };
 
+#ifndef _XIAOMI_CHOPIN_
 struct sdesc {
 	struct shash_desc shash;
 	char ctx[];
 };
+#endif
 
 struct ap_task_manage_t ap_task_manage;
 
@@ -87,7 +93,9 @@ static int ccu_load_segments(const struct firmware *fw,
 	enum CCU_BIN_TYPE type);
 static void *ccu_da_to_va(u64 da, uint32_t len);
 static int ccu_sanity_check(const struct firmware *fw);
+#ifndef _XIAOMI_CHOPIN_
 static int ccu_cert_check(const struct firmware *fw);
+#endif
 
 static inline unsigned int CCU_MsToJiffies(unsigned int Ms)
 {
@@ -919,11 +927,19 @@ int ccu_load_bin(struct ccu_device_s *device, enum CCU_BIN_TYPE type)
 		goto EXIT;
 	}
 
+#ifndef _XIAOMI_CHOPIN_
+	/*
+	 * Chopin's vendor lib3a.ccu carries no appended signature block, so
+	 * the RSA certificate check below can never pass on this device and
+	 * would leave the CCU unbooted. The stock Chopin kernel verifies the
+	 * ELF sanity only. See ccu_cert_check() for details.
+	 */
 	ret = ccu_cert_check(firmware_p);
 	if (ret < 0) {
 		LOG_ERR("sanity check failed: %d\n", ret);
 		goto EXIT;
 	}
+#endif
 
 	ret = ccu_load_segments(firmware_p, type);
 	if (ret < 0)
@@ -933,6 +949,7 @@ EXIT:
 	return ret;
 }
 
+#ifndef _XIAOMI_CHOPIN_
 struct tcrypt_result {
 	struct completion completion;
 	int err;
@@ -1081,6 +1098,7 @@ free_req:
 	LOG_DBG_MUST("%s-\n", __func__);
 	return ret;
 }
+#endif /* !_XIAOMI_CHOPIN_ */
 
 
 int ccu_sanity_check(const struct firmware *fw)

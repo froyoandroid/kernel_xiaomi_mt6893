@@ -80,6 +80,8 @@
 #define PMSC_PORT_TEST_CTRL_OFFSET  28
 
 /*procfs node*/
+#define PROC_DIR_MTK_USB "mtk_usb"
+#define PROC_FILE_TESTMODE "mtk_usb/testmode"
 #define PROC_FILES_NUM 1
 static struct proc_dir_entry *proc_files[PROC_FILES_NUM] = {
 	NULL};
@@ -194,9 +196,21 @@ static void xhci_mtk_dbg_init(struct xhci_hcd_mtk *mtk)
 {
 	u8 idx = 0;
 
-	proc_mkdir("mtk_usb", NULL);
-
-	proc_files[idx] = proc_create_data("mtk_usb/testmode", 0644, NULL, &testmode_fops, mtk);
+	/*
+	 * Try the file first and only create "mtk_usb" when that fails.
+	 * The directory is shared with phy-mtk-tphy, which already made it
+	 * from its own probe, and proc_mkdir() has no "already exists"
+	 * short-circuit: it goes through proc_register(), which WARNs and
+	 * returns NULL on a duplicate name. proc_create_data() on the other
+	 * hand fails quietly when the parent is missing, so probing with it
+	 * first keeps the common path silent.
+	 */
+	proc_files[idx] = proc_create_data(PROC_FILE_TESTMODE, 0644, NULL, &testmode_fops, mtk);
+	if (!proc_files[idx]) {
+		proc_mkdir(PROC_DIR_MTK_USB, NULL);
+		proc_files[idx] = proc_create_data(PROC_FILE_TESTMODE, 0644, NULL,
+						   &testmode_fops, mtk);
+	}
 	if (!proc_files[idx])
 		pr_info("%s: fail to create testmode node in procfs\n", __func__);
 	idx++;
@@ -207,8 +221,10 @@ static void xhci_mtk_dbg_exit(struct xhci_hcd_mtk *mtk)
 	u8 idx = 0;
 
 	for (; idx < PROC_FILES_NUM; idx++) {
-		if (proc_files[idx])
+		if (proc_files[idx]) {
 			proc_remove(proc_files[idx]);
+			proc_files[idx] = NULL;
+		}
 	}
 }
 

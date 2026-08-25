@@ -13,6 +13,8 @@ source "drivers/input/touchscreen/mediatek/Kconfig"
 
 source "drivers/input/touchscreen/NT36672C/Kconfig"
 
+source "drivers/input/touchscreen/NVT36672c/Kconfig"
+
 if INPUT_TOUCHSCREEN
 
 source "drivers/input/touchscreen/focaltech_spi/Kconfig"

@@ -58,10 +58,10 @@
 		reg = <0x00>;
 		status = "ok";
 		spi-max-frequency = <9600000>;
-		novatek,irq-gpio = <&pio 19 IRQ_TYPE_EDGE_FALLING>;
+		novatek,irq-gpio = <&pio 19 0x2001>;
 		pinctrl-names = "pmx_ts_active", "pmx_ts_suspend";
-		pinctrl-0 = <&ts_int_active>, <&ts_cs_active>;
-		pinctrl-1 = <&ts_int_suspend>, <&ts_cs_suspend>;
+		pinctrl-0 = <&ts_int_active &ts_cs_active>;
+		pinctrl-1 = <&ts_int_suspend &ts_cs_suspend>;
 		novatek,swrst-n8-addr = <0x3f0fe>;
 		novatek,spi-rd-fast-addr = <0x3f310>;
 		novatek,config-array-size = <2>;

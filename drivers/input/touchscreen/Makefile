@@ -133,6 +133,7 @@ obj-$(CONFIG_TOUCHSCREEN_MTK_SYNAPTICS_I2C_RMI4)	+=  synaptics_i2c_rmi4/
 obj-$(CONFIG_TOUCHSCREEN_FOCALTECH) += focaltech_spi/
 obj-$(CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE) += xiaomi/
 obj-$(CONFIG_TOUCHSCREEN_ST_FTS_V521_SPI) += fts_spi/
+obj-$(CONFIG_TOUCHSCREEN_NT36xxx_HOSTDL_SPI) += NVT36672c/
 obj-y += double_click.o
 TOUCH_LISTS := $(subst ",,$(CONFIG_TOUCHSCREEN_MTK_TOUCH))
 obj-n += $(foreach TOUCH,$(TOUCH_LISTS),$(TOUCH)/)

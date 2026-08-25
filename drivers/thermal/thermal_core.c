@@ -63,6 +63,7 @@ struct screen_monitor sm;
 struct usb_monitor  {
 	struct notifier_block psy_nb;
 	int usb_online;
+	struct work_struct psy_work;
 };
 static struct usb_monitor usb_state;
 
@@ -2003,28 +2004,46 @@ static int screen_state_for_thermal_callback(struct notifier_block *nb, unsigned
 }
 #endif
 
+static void usb_online_work(struct work_struct *work)
+{
+	static struct power_supply *charger_psy;
+	union power_supply_propval ret = {0,};
+	int err;
+
+	if (!charger_psy)
+		charger_psy = power_supply_get_by_name("charger");
+	if (!charger_psy)
+		return;
+
+	err = power_supply_get_property(charger_psy,
+			POWER_SUPPLY_PROP_ONLINE, &ret);
+	if (err) {
+		pr_err("usb online read error:%d\n", err);
+		return;
+	}
+
+	usb_state.usb_online = ret.intval;
+	sysfs_notify(&thermal_message_dev.kobj, NULL, "usb_online");
+}
+
 static int usb_online_callback(struct notifier_block *nb,
 		unsigned long val, void *data)
 {
-	static struct power_supply *charger_psy;
 	struct power_supply *psy = data;
-	union power_supply_propval ret = {0,};
-	int err = 0;
 
 	if (strcmp(psy->desc->name, "usb"))
 		return NOTIFY_OK;
-	if (!charger_psy)
-		charger_psy = power_supply_get_by_name("charger");
-	if (charger_psy) {
-		err = power_supply_get_property(charger_psy,
-				POWER_SUPPLY_PROP_ONLINE, &ret);
-		if (err) {
-			pr_err("usb online read error:%d\n",err);
-			return err;
-		}
-		usb_state.usb_online = ret.intval;
-		sysfs_notify(&thermal_message_dev.kobj, NULL, "usb_online");
-	}
+
+	/*
+	 * Defer the work: this runs on the atomic power supply notifier
+	 * chain, inside rcu_read_lock(), but both the property read and
+	 * sysfs_notify() -> kernfs_find_and_get_ns() take sleeping locks.
+	 * Never return an errno from here either - notifier_call_chain()
+	 * tests the result against NOTIFY_STOP_MASK, so a negative value
+	 * would abort the chain and starve every later registrant.
+	 */
+	schedule_work(&usb_state.psy_work);
+
 	return NOTIFY_OK;
 }
 
@@ -2066,6 +2085,7 @@ static int __init thermal_init(void)
 #endif
 
 	usb_state.psy_nb.notifier_call=usb_online_callback;
+	INIT_WORK(&usb_state.psy_work, usb_online_work);
 	ret = power_supply_reg_notifier(&usb_state.psy_nb);
 	if (ret < 0) {
 		pr_err("usb online notifier registration error. defer. err:%d\n",

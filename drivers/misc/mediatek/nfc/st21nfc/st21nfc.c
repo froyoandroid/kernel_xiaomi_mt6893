@@ -41,8 +41,10 @@
 #include "st21nfc.h"
 
 // Comment this out to remove the check of CLF response during probe
+#ifndef _XIAOMI_CHOPIN_
 #define WITH_PING_DURING_PROBE
 #define RECOVERY_SUPPORT_IN_PING
+#endif
 
 
 // Kernel 4.9 on some platforms is using legacy drivers (kernel-4.9-lc)
@@ -244,8 +246,13 @@ static irqreturn_t st21nfc_dev_irq_handler(int irq, void *dev_id)
 {
 	struct st21nfc_device *st21nfc_dev = dev_id;
 
+#ifdef _XIAOMI_CHOPIN_
+	if (device_may_wakeup(&st21nfc_dev->client->dev))
+		pm_wakeup_event(&st21nfc_dev->client->dev, WAKEUP_SRC_TIMEOUT);
+#else
 	if (st21nfc_dev->irq_wakeup_source != NULL)
 		__pm_wakeup_event(st21nfc_dev->irq_wakeup_source, WAKEUP_SRC_TIMEOUT);
+#endif
 	st21nfc_disable_irq(st21nfc_dev);
 
 	/* Wake up waiting readers */
@@ -279,6 +286,10 @@ static int st21nfc_loc_set_polaritymode(struct st21nfc_device *st21nfc_dev,
 		break;
 	}
 	if (st21nfc_dev->irq_is_attached) {
+#ifdef _XIAOMI_CHOPIN_
+		disable_irq_wake(client->irq);
+		st21nfc_dev->irq_wake_up = false;
+#endif
 		devm_free_irq(dev, client->irq, st21nfc_dev);
 		st21nfc_dev->irq_is_attached = false;
 	}
@@ -295,14 +306,23 @@ static int st21nfc_loc_set_polaritymode(struct st21nfc_device *st21nfc_dev,
 	st21nfc_dev->irq_enabled = true;
 
 	ret = devm_request_irq(dev, client->irq, st21nfc_dev_irq_handler,
-				   // on MTK older kernels, it looks like below flag helps to have faster processing.
-			       st21nfc_dev->polarity_mode | IRQF_NO_SUSPEND,
-			       client->name, st21nfc_dev);
+#ifdef _XIAOMI_CHOPIN_
+				       st21nfc_dev->polarity_mode,
+#else
+				       /* Keep the faster MTK IRQ path for Agate. */
+				       st21nfc_dev->polarity_mode | IRQF_NO_SUSPEND,
+#endif
+				       client->name, st21nfc_dev);
 
 	if (ret) {
 		pr_err("%s : devm_request_irq failed\n", __func__);
 		return -ENODEV;
 	}
+#ifdef _XIAOMI_CHOPIN_
+	ret = enable_irq_wake(client->irq);
+	if (ret)
+		pr_err("%s : enable_irq_wake failed\n", __func__);
+#endif
 	st21nfc_dev->irq_is_attached = true;
 	st21nfc_disable_irq(st21nfc_dev);
 
@@ -636,6 +656,7 @@ static int st21nfc_release(struct inode *inode, struct file *file)
 	struct st21nfc_device *st21nfc_dev = container_of(
 		file->private_data, struct st21nfc_device, st21nfc_device);
 
+#ifndef _XIAOMI_CHOPIN_
 	if (st21nfc_dev->irq_is_attached) {
 		st21nfc_disable_irq(st21nfc_dev);
 		devm_free_irq(&st21nfc_dev->client->dev,
@@ -643,6 +664,7 @@ static int st21nfc_release(struct inode *inode, struct file *file)
 					st21nfc_dev);
 		st21nfc_dev->irq_is_attached = false;
 	}
+#endif
 
 	st21nfc_dev->device_open = false;
 	if (enable_debug_log)
@@ -763,6 +785,10 @@ static long st21nfc_dev_ioctl(struct file *filp, unsigned int cmd,
 		mutex_lock(&st21nfc_dev->irq_dir_mutex);
 		if (!IS_ERR_OR_NULL(st21nfc_dev->gpiod_reset)) {
 			if (st21nfc_dev->irq_is_attached) {
+#ifdef _XIAOMI_CHOPIN_
+				disable_irq_wake(st21nfc_dev->client->irq);
+				st21nfc_dev->irq_wake_up = false;
+#endif
 				devm_free_irq(&st21nfc_dev->client->dev,
 					      st21nfc_dev->client->irq,
 					      st21nfc_dev);
@@ -815,6 +841,11 @@ static long st21nfc_dev_ioctl(struct file *filp, unsigned int cmd,
 			mutex_unlock(&st21nfc_dev->irq_dir_mutex);
 			return -ENODEV;
 		}
+#ifdef _XIAOMI_CHOPIN_
+		ret = enable_irq_wake(st21nfc_dev->client->irq);
+		if (ret)
+			pr_err("%s : enable_irq_wake failed\n", __func__);
+#endif
 		st21nfc_dev->irq_is_attached = true;
 		st21nfc_disable_irq(st21nfc_dev);
 
@@ -860,10 +891,19 @@ static unsigned int st21nfc_poll(struct file *file, poll_table *wait)
 		st21nfc_disable_irq(st21nfc_dev);
 	} else {
 		/* Wake_up_pin is low. Activate ISR  */
+#ifdef _XIAOMI_CHOPIN_
+		if (!st21nfc_dev->irq_enabled) {
+			if (enable_debug_log)
+				pr_debug("%s enable irq\n", __func__);
+
+			st21nfc_enable_irq(st21nfc_dev);
+		}
+#else
 		if (enable_debug_log)
 			pr_debug("%s enable irq\n", __func__);
 
 		st21nfc_enable_irq(st21nfc_dev);
+#endif
 	}
 
 	mutex_unlock(&st21nfc_dev->irq_dir_mutex);
@@ -1389,6 +1429,9 @@ static int st21nfc_probe(struct i2c_client *client,
 
 	/* I2C retry management: we want only 1 attempt at communication.
 	   As some busses need retry=1 and most need retry=0, we add optional DTS entry */
+#ifdef _XIAOMI_CHOPIN_
+	client->adapter->retries = 0;
+#else
 	if (of_property_read_u32(dev->of_node, "i2c-retry",
 				 &client->adapter->retries)) {
 		client->adapter->retries = 0;
@@ -1396,6 +1439,7 @@ static int st21nfc_probe(struct i2c_client *client,
 		pr_debug("%s : i2c-retry = %d\n", __func__,
 			 client->adapter->retries);
 	}
+#endif
 
 #ifdef WITH_PING_DURING_PROBE
 #ifdef RECOVERY_SUPPORT_IN_PING
@@ -1454,7 +1498,12 @@ static int st21nfc_probe(struct i2c_client *client,
 		pr_err("%s : sysfs_create_group failed\n", __func__);
 		goto err_sysfs_create_group_failed;
 	}
+#ifdef _XIAOMI_CHOPIN_
+	device_init_wakeup(&client->dev, true);
+	device_set_wakeup_capable(&client->dev, true);
+#else
 	st21nfc_dev->irq_wakeup_source = wakeup_source_register(NULL, "st21nfc");
+#endif
 	st21nfc_dev->irq_wake_up = false;
 
 	return 0;
@@ -1515,10 +1564,12 @@ static int st21nfc_remove(struct i2c_client *client)
 		mutex_destroy(&st21nfc_dev->pidle_mutex);
 	}
 	sysfs_remove_group(&client->dev.kobj, &st21nfc_attr_grp);
+#ifndef _XIAOMI_CHOPIN_
 	if (st21nfc_dev->irq_wakeup_source) {
 		wakeup_source_unregister(st21nfc_dev->irq_wakeup_source);
 		st21nfc_dev->irq_wakeup_source = NULL;
 	}
+#endif
 	mutex_destroy(&st21nfc_dev->read_mutex);
 	mutex_destroy(&st21nfc_dev->irq_dir_mutex);
 	acpi_dev_remove_driver_gpios(ACPI_COMPANION(&client->dev));
@@ -1530,9 +1581,15 @@ static int st21nfc_suspend(struct device *device)
 	struct i2c_client *client = to_i2c_client(device);
 	struct st21nfc_device *st21nfc_dev = i2c_get_clientdata(client);
 
+#ifdef _XIAOMI_CHOPIN_
+	if (device_may_wakeup(&client->dev) && st21nfc_dev->irq_enabled) {
+		if (!enable_irq_wake(client->irq))
+			st21nfc_dev->irq_wake_up = true;
+#else
 	if (st21nfc_dev->irq_enabled) {
 		if (!enable_irq_wake(client->irq))
 			st21nfc_dev->irq_wake_up = true;
+#endif
 	}
 
 	if (!IS_ERR_OR_NULL(st21nfc_dev->gpiod_pidle))
@@ -1548,9 +1605,15 @@ static int st21nfc_resume(struct device *device)
 	struct st21nfc_device *st21nfc_dev = i2c_get_clientdata(client);
 	int pidle;
 
+#ifdef _XIAOMI_CHOPIN_
+	if (device_may_wakeup(&client->dev) && st21nfc_dev->irq_wake_up) {
+		if (!disable_irq_wake(client->irq))
+			st21nfc_dev->irq_wake_up = false;
+#else
 	if (st21nfc_dev->irq_wake_up) {
 		if (!disable_irq_wake(client->irq))
 			st21nfc_dev->irq_wake_up = false;
+#endif
 	}
 
 	if (!IS_ERR(st21nfc_dev->gpiod_pidle)) {

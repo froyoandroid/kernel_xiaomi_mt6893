@@ -14,7 +14,8 @@
 
 #define AF_MAGIC 'A'
 
-#ifdef CONFIG_MACH_MT6779
+#if defined(CONFIG_MACH_MT6779) || defined(_XIAOMI_CHOPIN_)
+/* stock Chopin 4.14 reports the motor folder name to the camera HAL */
 #define SUPPORT_GETTING_LENS_FOLDER_NAME 1
 #else
 #define SUPPORT_GETTING_LENS_FOLDER_NAME 0

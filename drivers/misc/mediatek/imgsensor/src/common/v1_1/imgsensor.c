@@ -52,6 +52,27 @@
 #include "imgsensor_ca.h"
 #endif
 
+/*
+ * Minimum feature-control payload sizes.
+ *
+ * The Android U base tightened several SENSOR_FEATURE_* parameter-length
+ * checks beyond the payload the handler actually dereferences.  Chopin's
+ * camera HAL predates that change and still passes exactly the payload each
+ * feature reads, so the tightened bounds reject calls that stock Chopin 4.14
+ * accepts.  Ask only for what is dereferenced here and leave the Agate limits
+ * untouched.
+ */
+#if defined(_XIAOMI_CHOPIN_)
+#define IMGSENSOR_PARA_LEN_MCLK_CURRENT (sizeof(MUINT32))
+#define IMGSENSOR_PARA_LEN_SENSOR_SYNC \
+	(sizeof(struct ACDK_KD_SENSOR_SYNC_STRUCT))
+#define IMGSENSOR_PARA_LEN_SEAMLESS (2 * sizeof(unsigned long long))
+#else
+#define IMGSENSOR_PARA_LEN_MCLK_CURRENT (1 * sizeof(unsigned long long))
+#define IMGSENSOR_PARA_LEN_SENSOR_SYNC (4 * sizeof(unsigned long long))
+#define IMGSENSOR_PARA_LEN_SEAMLESS (3 * sizeof(unsigned long long))
+#endif
+
 static DEFINE_MUTEX(gimgsensor_mutex);
 static DEFINE_MUTEX(gimgsensor_open_mutex);
 
@@ -1001,7 +1022,7 @@ static inline int adopt_CAMERA_HW_FeatureControl(void *pBuf)
 	case SENSOR_FEATURE_SET_MCLK_DRIVE_CURRENT:
 	{
 		MUINT32 __current = (*(MUINT32 *)pFeaturePara);
-		if (FeatureParaLen < 1 * sizeof(unsigned long long)) {
+		if (FeatureParaLen < IMGSENSOR_PARA_LEN_MCLK_CURRENT) {
 			PK_DBG("FeatureParaLen is too small %d\n", FeatureParaLen);
 			kfree(pFeaturePara);
 			return -EINVAL;
@@ -1023,11 +1044,14 @@ static inline int adopt_CAMERA_HW_FeatureControl(void *pBuf)
 		PK_INFO("SECURE_SENSOR_ID = %x\n",
 			(int)psensor->inst.psensor_list->id);
 
+#if !defined(_XIAOMI_CHOPIN_)
+		/* the handler below never dereferences pFeaturePara */
 		if (FeatureParaLen < 1 * sizeof(unsigned long long)) {
 			PK_DBG("FeatureParaLen is too small %d\n", FeatureParaLen);
 			kfree(pFeaturePara);
 			return -EINVAL;
 		}
+#endif
 
 		/* size : IMGSENSOR_SENSOR */
 		c_params.param0 =
@@ -1111,7 +1135,7 @@ static inline int adopt_CAMERA_HW_FeatureControl(void *pBuf)
 		pSensorSyncInfo =
 			(struct ACDK_KD_SENSOR_SYNC_STRUCT *) pFeaturePara;
 
-		if (FeatureParaLen < 4 * sizeof(unsigned long long)) {
+		if (FeatureParaLen < IMGSENSOR_PARA_LEN_SENSOR_SYNC) {
 			PK_DBG("FeatureParaLen is too small %d\n", FeatureParaLen);
 			kfree(pFeaturePara);
 			return -EINVAL;
@@ -1765,7 +1789,7 @@ static inline int adopt_CAMERA_HW_FeatureControl(void *pBuf)
 				(unsigned long long *)pFeaturePara;
 			void *usr_ptr =
 				(void *)(uintptr_t) (*(pFeaturePara_64 + 1));
-			if (FeatureParaLen < 3 * sizeof(unsigned long long)) {
+			if (FeatureParaLen < IMGSENSOR_PARA_LEN_SEAMLESS) {
 				PK_DBG("FeatureParaLen is too small %d\n", FeatureParaLen);
 				kfree(pFeaturePara);
 				return -EINVAL;

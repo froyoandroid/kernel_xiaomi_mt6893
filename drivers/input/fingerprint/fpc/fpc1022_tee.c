@@ -106,7 +106,9 @@ extern void mt_spi_disable_master_clk(struct spi_device *spidev);
 
 #ifndef FPC_DRM_INTERFACE_WA
 //extern int mtk_dsi_enable_ext_interface(int timeout);
-//extern int mtk_drm_early_resume(int timeout);
+#ifdef _XIAOMI_CHOPIN_
+extern int mtk_drm_early_resume(int timeout);
+#endif
 #endif
 
 #include "teei_fp.h"
@@ -140,9 +142,12 @@ struct fpc1022_data {
 	bool wait_finger_down;
 	struct wakeup_source *ttw_wl;
 	struct work_struct work;
-struct input_handler input_handler;
+#ifndef _XIAOMI_CHOPIN_
+	struct input_handler input_handler;
+#endif
 };
 
+#ifndef _XIAOMI_CHOPIN_
 static int input_connect(struct input_handler *handler,
 		struct input_dev *dev, const struct input_device_id *id) {
 	int rc;
@@ -199,6 +204,7 @@ static const struct input_device_id ids[] = {
 	},
 	{ },
 };
+#endif
 int fp_idx_ic_exist;
 
 extern bool goodix_fp_exist;
@@ -484,7 +490,9 @@ static const struct attribute_group attribute_group = {
 static void notification_work(struct work_struct *work)
 {
 	pr_info("%s: fpc fp unblank\n", __func__);
-	//mtk_drm_early_resume(FP_UNLOCK_REJECTION_TIMEOUT);
+#ifdef _XIAOMI_CHOPIN_
+	mtk_drm_early_resume(FP_UNLOCK_REJECTION_TIMEOUT);
+#endif
 	//mtk_dsi_enable_ext_interface(FP_UNLOCK_REJECTION_TIMEOUT);
 }
 #endif
@@ -701,6 +709,7 @@ static int fpc1022_platform_probe(struct platform_device *pldev)
 	enable_irq_wake(fpc1022->irq_num);
 	fpc1022->ttw_wl = wakeup_source_register(dev,"fpc_ttw_wl");
 
+#ifndef _XIAOMI_CHOPIN_
 	fpc1022->input_handler.filter = input_filter;
 	fpc1022->input_handler.connect = input_connect;
 	fpc1022->input_handler.disconnect = input_disconnect;
@@ -711,6 +720,7 @@ static int fpc1022_platform_probe(struct platform_device *pldev)
 		dev_err(dev, "failed to register key handler\n");
 		return ret;
 	}
+#endif
 
 	ret = sysfs_create_group(&dev->kobj, &attribute_group);
 	if (ret) {

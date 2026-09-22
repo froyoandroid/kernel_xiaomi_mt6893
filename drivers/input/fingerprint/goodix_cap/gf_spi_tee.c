@@ -102,7 +102,9 @@ bool goodix_fp_exist = false;
 extern bool fpc1022_fp_exist;
 //int mtkfb_prim_panel_unblank(int timeout);
 //extern int mtk_dsi_enable_ext_interface(int timeout);
-//extern int mtk_drm_early_resume(int timeout);
+#ifdef _XIAOMI_CHOPIN_
+extern int mtk_drm_early_resume(int timeout);
+#endif
 struct spi_device *spi_fingerprint;
 struct TEEC_UUID uuid_ta_gf = { 0x8888c03f, 0xc30c, 0x4dd0,
 	{0xa3, 0x19, 0xea, 0x29, 0x64, 0x3d, 0x4d, 0x4b}
@@ -807,8 +809,14 @@ static irqreturn_t gf_irq(int irq, void *handle)
 static long gf_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	struct gf_device *gf_dev = NULL;
+#ifdef _XIAOMI_CHOPIN_
+	struct gf_key gf_key;
+#endif
 	gf_nav_event_t nav_event = GF_NAV_NONE;
 	uint32_t nav_input = 0;
+#ifdef _XIAOMI_CHOPIN_
+	uint32_t key_input = 0;
+#endif
 #ifdef SUPPORT_REE_SPI
 #ifdef SUPPORT_REE_OSWEGO
 	struct gf_ioc_transfer ioc;
@@ -976,6 +984,50 @@ static long gf_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			 __func__);
 		gf_hw_power_enable(gf_dev, 0);
 		break;
+
+#ifdef _XIAOMI_CHOPIN_
+	case GF_IOC_INPUT_KEY_EVENT:
+		if (copy_from_user
+		    (&gf_key, (struct gf_key *)arg, sizeof(struct gf_key))) {
+			gf_debug(ERR_LOG,
+				 "Failed to copy input key event from user to kernel\n");
+			retval = -EFAULT;
+			break;
+		}
+
+		if (GF_KEY_HOME == gf_key.key) {
+			key_input = GF_KEY_INPUT_HOME;
+		} else if (GF_KEY_HOME_DOUBLE_CLICK == gf_key.key) {
+			key_input = GF_KEY_DOUBLE_CLICK;
+		} else if (GF_KEY_POWER == gf_key.key) {
+			key_input = GF_KEY_INPUT_HOME;
+		} else if (GF_KEY_CAMERA == gf_key.key) {
+			key_input = GF_KEY_INPUT_CAMERA;
+		} else {
+			/* add special key define */
+			key_input = gf_key.key;
+		}
+		gf_debug(INFO_LOG,
+			 "%s: received key event[%d], key=%d, value=%d\n",
+			 __func__, key_input, gf_key.key, gf_key.value);
+
+		if ((GF_KEY_POWER == gf_key.key || GF_KEY_CAMERA == gf_key.key)
+		    && (gf_key.value == 1)) {
+			input_report_key(gf_dev->input, key_input, 1);
+			input_sync(gf_dev->input);
+			input_report_key(gf_dev->input, key_input, 0);
+			input_sync(gf_dev->input);
+		}
+
+		if (GF_KEY_HOME == gf_key.key || GF_KEY_HOME_DOUBLE_CLICK == gf_key.key) {
+			gf_debug(INFO_LOG, "input report key event single or double click");
+			input_report_key(gf_dev->input, key_input,
+					 gf_key.value);
+			input_sync(gf_dev->input);
+		}
+
+		break;
+#endif
 
 	case GF_IOC_NAV_EVENT:
 		gf_debug(ERR_LOG, "nav event");
@@ -1223,7 +1275,9 @@ static void unblank_work(struct work_struct *work)
 	//mtkfb_prim_panel_unblank(200);
 	//dsi_bridge_interface_enable(FP_UNLOCK_REJECTION_TIMEOUT);
 	//mtk_dsi_enable_ext_interface(FP_UNLOCK_REJECTION_TIMEOUT);
-	//mtk_drm_early_resume(FP_UNLOCK_REJECTION_TIMEOUT);
+#ifdef _XIAOMI_CHOPIN_
+	mtk_drm_early_resume(FP_UNLOCK_REJECTION_TIMEOUT);
+#endif
 }
 #endif
 
@@ -2355,11 +2409,22 @@ static int gf_probe(struct spi_device *spi)
 	}
 
 	__set_bit(EV_KEY, gf_dev->input->evbit);
+#ifdef _XIAOMI_CHOPIN_
+	__set_bit(GF_KEY_INPUT_HOME, gf_dev->input->keybit);
+	__set_bit(GF_KEY_DOUBLE_CLICK, gf_dev->input->keybit);
+
+	__set_bit(GF_KEY_INPUT_MENU, gf_dev->input->keybit);
+	__set_bit(GF_KEY_INPUT_BACK, gf_dev->input->keybit);
+	__set_bit(GF_KEY_INPUT_POWER, gf_dev->input->keybit);
+#endif
 
 	__set_bit(GF_NAV_INPUT_UP, gf_dev->input->keybit);
 	__set_bit(GF_NAV_INPUT_DOWN, gf_dev->input->keybit);
 	__set_bit(GF_NAV_INPUT_RIGHT, gf_dev->input->keybit);
 	__set_bit(GF_NAV_INPUT_LEFT, gf_dev->input->keybit);
+#ifdef _XIAOMI_CHOPIN_
+	__set_bit(GF_KEY_INPUT_CAMERA, gf_dev->input->keybit);
+#endif
 	__set_bit(GF_NAV_INPUT_CLICK, gf_dev->input->keybit);
 	__set_bit(GF_NAV_INPUT_DOUBLE_CLICK, gf_dev->input->keybit);
 	__set_bit(GF_NAV_INPUT_LONG_PRESS, gf_dev->input->keybit);

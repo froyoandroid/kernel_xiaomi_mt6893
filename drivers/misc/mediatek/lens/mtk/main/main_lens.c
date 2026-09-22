@@ -172,7 +172,18 @@ static struct pinctrl *vcamaf_pio;
 static struct pinctrl_state *vcamaf_pio_on;
 static struct pinctrl_state *vcamaf_pio_off;
 
+/*
+ * Chopin exposes the main VCM supply as camera_af_hw_node's vcamwaf-supply
+ * (wl2866d2 avdd2) and stock 4.14 drives it at 2.8 V before enabling it.
+ * Requesting the generic camaf_m1_pmic name there yields a dummy regulator,
+ * so the actuator is never powered.  Agate keeps the generic binding.
+ */
+#if defined(_XIAOMI_CHOPIN_)
+#define CAMAF_PMIC     "vcamwaf"
+#define CAMAF_VOLTAGE  2800000
+#else
 #define CAMAF_PMIC     "camaf_m1_pmic"
+#endif
 #define CAMAF_GPIO_ON  "camaf_m1_gpio_on"
 #define CAMAF_GPIO_OFF "camaf_m1_gpio_off"
 
@@ -234,6 +245,12 @@ static void camaf_power_on(void)
 	int ret;
 
 	if (vcamaf_ldo) {
+#if defined(_XIAOMI_CHOPIN_)
+		ret = regulator_set_voltage(vcamaf_ldo,
+					    CAMAF_VOLTAGE, CAMAF_VOLTAGE);
+		if (ret)
+			LOG_INF("regulator set voltage failed (%d)\n", ret);
+#endif
 		ret = regulator_enable(vcamaf_ldo);
 		LOG_INF("regulator enable (%d)\n", ret);
 	}

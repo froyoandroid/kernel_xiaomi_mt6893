@@ -618,7 +618,12 @@ void propagate_remount(struct mount *mnt)
 	for (p = propagation_next(parent, parent); p;
 				p = propagation_next(p, parent)) {
 		m = __lookup_mnt(&p->mnt, mnt->mnt_mountpoint);
+#if IS_ENABLED(CONFIG_SDCARD_FS)
+		/* A peer may have replaced this mount with another filesystem. */
+		if (m && m->mnt.mnt_sb == sb && m->mnt.data)
+#else
 		if (m)
+#endif
 			sb->s_op->copy_mnt_data(m->mnt.data, mnt->mnt.data);
 	}
 }

@@ -2548,6 +2548,38 @@ page_owner=on loop.max_part=7";
 		not_support_u3;
 	};
 
+	/*
+	 * Legacy USB2 PHY node kept solely as an overlay anchor.
+	 * The stock device-tree overlay (dtbo) attaches a
+	 * "mediatek,phy_tuning" child to &usb0phy. No mt6885-phy driver
+	 * is built in this defconfig (USB uses PHY_MTK_TPHY / &u3phy), so
+	 * this node is inert and only satisfies the overlay __fixups__.
+	 */
+	usb0phy: usb0phy@11e40000 {
+		compatible = "mediatek,mt6885-phy";
+		reg = <0 0x11e40000 0 0x10000>,
+		      <0 0x11203e00 0 0x100>;
+		reg-names = "sif_base", "ippc";
+		#phy-cells = <1>;
+		status = "disabled";
+	};
+
+	/*
+	 * Fixed-regulator anchors consumed by the stock dtbo &mmc0 overlay
+	 * (vmmc-supply / vqmmc-supply). Disabled by default like stock.
+	 */
+	mmc_fixed_3v3: fixedregulator@0 {
+		compatible = "regulator-fixed";
+		regulator-name = "mmc_power";
+		status = "disabled";
+	};
+
+	mmc_fixed_1v8_io: fixedregulator@1 {
+		compatible = "regulator-fixed";
+		regulator-name = "mmc_io";
+		status = "disabled";
+	};
+
 	mmc0: mmc@11230000 {
 		compatible = "mediatek,mt6779-mmc";
 		reg = <0 0x11230000 0 0x10000>,
@@ -8648,6 +8680,47 @@ page_owner=on loop.max_part=7";
 };
 
 &pio {
+	/*
+	 * NFC pinctrl anchors consumed by the stock dtbo st21nfc@08 overlay
+	 * (fragment@23 references &nfc_default / &nfc_int_active / etc.).
+	 * GPIO11 = NFC IRQ, GPIO10 = NFC enable, matching stock chopin base.
+	 */
+	nfc_default: nfc_default {
+	};
+
+	nfc_int_active: nfc_int_active {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO11__FUNC_GPIO11>;
+			slew-rate = <0>;
+			bias-pull-up;
+		};
+	};
+
+	nfc_int_suspend: nfc_int_suspend {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO11__FUNC_GPIO11>;
+			slew-rate = <0>;
+			bias-pull-up;
+		};
+	};
+
+	nfc_enable_active: nfc_enable_active {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO10__FUNC_GPIO10>;
+			slew-rate = <1>;
+			output-high;
+			bias-pull-up;
+		};
+	};
+
+	nfc_enable_suspend: nfc_enable_suspend {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO10__FUNC_GPIO10>;
+			slew-rate = <1>;
+			bias-disable;
+		};
+	};
+
 	aud_clk_mosi_off: aud_clk_mosi_off {
 		pins_cmd0_dat {
 			pinmux = <PINMUX_GPIO214__FUNC_GPIO214>;

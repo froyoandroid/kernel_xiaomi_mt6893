@@ -1,0 +1,87 @@
+/*
+ * Copyright (C) 2015 MediaTek Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ */
+
+&pio {
+	/* TOUCH PANEL GPIO - Novatek NT36672C on SPI */
+	ts_int_active: int_active {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO19__FUNC_GPIO19>;
+			slew-rate = <0>;
+			bias-disable;
+		};
+	};
+
+	ts_int_suspend: int_suspend {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO19__FUNC_GPIO19>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+
+	ts_cs_active: ts_cs_active {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO169__FUNC_SPI0_B_CSB>, <PINMUX_GPIO170__FUNC_SPI0_B_MI>;
+		};
+	};
+
+	ts_cs_suspend: ts_cs_suspend {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO169__FUNC_GPIO169>, <PINMUX_GPIO170__FUNC_GPIO170>;
+			slew-rate = <1>;
+			bias-pull-down;
+			output-low;
+		};
+	};
+};
+
+&spi0 {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	mediatek,pad-select = <1>;
+	mediatek,kthread-rt = <1>;
+
+	/* Novatek NT36672C Touch Controller */
+	ts_novatek@0 {
+		compatible = "novatek,NVT-ts-spi";
+		reg = <0x00>;
+		status = "ok";
+		spi-max-frequency = <9600000>;
+		novatek,irq-gpio = <&pio 19 IRQ_TYPE_EDGE_FALLING>;
+		pinctrl-names = "pmx_ts_active", "pmx_ts_suspend";
+		pinctrl-0 = <&ts_int_active>, <&ts_cs_active>;
+		pinctrl-1 = <&ts_int_suspend>, <&ts_cs_suspend>;
+		novatek,swrst-n8-addr = <0x3f0fe>;
+		novatek,spi-rd-fast-addr = <0x3f310>;
+		novatek,config-array-size = <2>;
+
+		/* Tianma Panel Configuration */
+		novatek,cfg_0 {
+			novatek,tp-vendor = <0x46>;
+			novatek,display-maker = <0x36>;
+			novatek,fw-name = "novatek_nt36672c_k10a_fw01.bin";
+			novatek,mp-name = "novatek_nt36672c_k10a_mp01.bin";
+			novatek,clicknum-file-name = "nvt+tianma";
+		};
+
+		/* CSOT Panel Configuration */
+		novatek,cfg_1 {
+			novatek,tp-vendor = <0x53>;
+			novatek,display-maker = <0x42>;
+			novatek,fw-name = "novatek_nt36672c_k10a_fw02.bin";
+			novatek,mp-name = "novatek_nt36672c_k10a_mp02.bin";
+			novatek,clicknum-file-name = "nvt+csot";
+		};
+	};
+};

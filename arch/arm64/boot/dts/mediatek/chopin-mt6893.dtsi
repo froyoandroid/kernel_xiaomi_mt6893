@@ -1,0 +1,241 @@
+/*
+ * this file is for Chopin board specific configurations
+ */
+#include "mediatek/xiaomi-mt6893-common.dtsi"
+#include "chopin_touch.dtsi"
+#include "mediatek/chopin_mt6893_camera.dtsi"
+
+#include "chopin-regulators.dtsi"
+&odm {
+	thermal_message: thermal-message {
+		board-sensor = "VIRTUAL-SENSOR";
+	};
+};
+
+&lk_charger {
+	max_charger_voltage = <14500000>;
+
+	/* charging current */
+	usb_charger_current = <500000>;
+	ac_charger_current = <1500000>;
+	ac_charger_input_current = <1500000>;
+	non_std_ac_charger_current = <1000000>;
+	charging_host_charger_current = <1500000>;
+	ta_ac_charger_current = <1500000>;
+	pd_charger_current = <1500000>;
+
+	/* battery temperature protection */
+	temp_t4_threshold = <60>;
+	temp_t3_threshold = <0>;
+	temp_t1_threshold = <(-10)>;
+};
+
+&mt_charger {
+	battery-67w;
+};
+
+&charger {
+	algorithm_name = "SwitchCharging2";
+
+	battery_cv = <4460000>;
+
+	/* vote */
+	enable_vote;
+	enable_cv_step;
+	step_a = <4050000>;
+	step_b = <4150000>;
+	step_c = <4350000>;
+	step_d = <4450000>;
+	current_a = <9000000>;
+	current_b = <7350000>;
+	current_c = <6370000>;
+	current_d = <4900000>;
+	current_max = <12400000>;
+	step_hy_down_a = <150000>;
+	step_hy_down_b = <150000>;
+	step_hy_down_c = <150000>;
+	step_hy_down_d = <150000>;
+
+	/* ffc */
+	enable_ffc;
+	non_ffc_ieoc = <200000>;
+	non_ffc_cv = <4450000>;
+	ffc_ieoc = <1127000>;
+	ffc_ieoc_b = <1421000>;
+	ffc_cv = <4490000>;
+
+	enable_sw_jeita;
+	/* sw jeita */
+	jeita_temp_above_t4_cv = <4100000>;
+	jeita_temp_t3_to_t4_cv = <4100000>;
+	jeita_temp_t2_to_t3_cv = <4450000>;
+	jeita_temp_t1p5_to_t2_cv = <4450000>;
+	jeita_temp_t1_to_t1p5_cv = <4450000>;
+	jeita_temp_t0_to_t1_cv = <4450000>;
+	jeita_temp_tn1_to_t0_cv_a = <4200000>;
+	jeita_temp_tn1_to_t0_cv_b = <4450000>;
+	jeita_temp_below_t0_cv = <4200000>;
+	temp_t4_thres = <60>;
+	temp_t4_thres_minus_x_degree = <58>;
+	temp_t3_thres = <48>;
+	temp_t3_thres_minus_x_degree = <47>;
+	temp_t2_thres = <15>;
+	temp_t2_thres_plus_x_degree = <17>;
+	temp_t1p5_thres = <10>;
+	temp_t1p5_thres_plus_x_degree = <11>;
+	temp_t1_thres = <5>;
+	temp_t1_thres_plus_x_degree = <6>;
+	temp_t0_thres = <0>;
+	temp_t0_thres_plus_x_degree = <1>;
+	temp_tn1_thres = <(-10)>;
+	temp_tn1_thres_plus_x_degree = <(-9)>;
+	temp_neg_10_thres = <(-10)>;
+	temp_t3_to_t4_fcc = <2450000>;
+	temp_t2_to_t3_fcc = <12400000>;
+	temp_t1p5_to_t2_fcc = <5880000>;
+	temp_t1_to_t1p5_fcc = <3430000>;
+	temp_t0_to_t1_fcc = <2450000>;
+	temp_tn1_to_t0_fcc_a = <1000000>;
+	temp_tn1_to_t0_fcc_b = <735000>;
+	/* battery temperature protection */
+	enable_min_charge_temp;
+	min_charge_temp = <0>;
+	min_charge_temp_plus_x_degree = <2>;
+	max_charge_temp = <60>;
+	max_charge_temp_minus_x_degree = <58>;
+
+	qcom,thermal-mitigation-dcp
+		= <1600000 1600000 1600000 1600000 1600000 1600000 1600000
+		1600000 1600000 1600000 1600000 1600000 1500000 1400000
+		1200000 1000000>;
+	qcom,thermal-mitigation-qc3p5
+		= <4500000 4200000 4000000 3800000 3600000 3400000 3200000
+		3100000 3000000 2800000 2600000 2400000 2200000 2000000
+		1000000 700000>;
+	qcom,thermal-mitigation-qc3
+		= <3500000 3500000 3500000 3400000 3300000 3300000 3200000
+		3100000 3000000 2800000 2600000 2400000 2200000 2000000
+		1000000 700000>;
+	qcom,thermal-mitigation-qc3-classb
+		= <5400000 5100000 4700000 4300000 4000000 3600000 3400000
+		3400000 3400000 3200000 2500000 2200000 2000000 1300000
+		1000000 700000>;
+	qcom,thermal-mitigation-qc2
+		= <1500000 1500000 1500000 1500000 1500000 1500000 1400000
+		1300000 1200000 1100000 1000000 900000 800000 700000
+		600000 500000>;
+	qcom,thermal-mitigation-pd-base
+		= <12400000 11000000 9700000 8800000 8000000 7500000 7000000
+		6800000 6500000 6000000 5000000 4000000 3000000 2000000
+		1000000 500000>;
+
+	/* enable_pe_plus; */
+	/* enable_pe_2; */
+	bc12_charger = <1>;
+
+	charging_host_charger_current = <1500000>;
+	/* common */
+	max_charger_voltage = <14500000>;
+	min_charger_voltage = <4500000>;
+
+	/* dynamic mivr */
+	min_charger_voltage_1 = <4400000>;
+	min_charger_voltage_2 = <4200000>;
+	max_dmivr_charger_current = <1400000>;
+
+	/* xiaomi pps */
+	xm_pps_single_charger_input_current = <3000000>;
+	xm_pps_single_charger_current = <6000000>;
+	xm_pps_dual_charger_input_current = <3000000>;
+	xm_pps_dual_charger_chg1_current = <500000>;
+	xm_pps_dual_charger_chg2_current = <2500000>;
+	xm_pps_max_vbus = <12000000>;
+	xm_pps_max_ibus = <3000000>;
+	xm_pps_single_charger_current_non_verified_pps = <4800000>;
+
+	/* PD */
+	pd_vbus_upper_bound = <9000000>;
+	ac_charger_input_current = <1800000>;
+	/* float charger */
+	non_std_ac_charger_current = <1000000>;
+	/* default ac charger charge current */
+	ac_charger_current = <2000000>;
+
+	use_xmusb350_do_apsd;
+
+	/* distinguish 67w and 120w*/
+	battery-67w;
+};
+
+&bat_gm30 {
+	DISABLE_MTKBATTERY = <(1)>;
+	use-ti-gauge;
+	battery-67w;
+};
+
+&dsi0 {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	panel1@0 {
+		/* Chopin Dual Panel Setup - Ported from Stock DTBO */
+		compatible = "k10a_36_02_0a_dsc_vdo,lcm";
+		reg = <0x00>;
+		dvdd-supply = <&wl2866d2_dvdd2>;
+		reset-gpios = <&pio 42 0>;
+		bias-gpios = <&pio 126 0>, <&pio 148 0>;
+		pinctrl-names = "default";
+		port {
+			panel_in1: endpoint {
+				remote-endpoint = <&dsi_out>;
+			};
+		};
+	};
+
+	panel2@1 {
+		compatible = "k10a_42_02_0b_dsc_vdo,lcm";
+		reg = <0x01>;
+		dvdd-supply = <&wl2866d2_dvdd2>;
+		reset-gpios = <&pio 42 0>;
+		bias-gpios = <&pio 126 0>, <&pio 148 0>;
+		pinctrl-names = "default";
+		port {
+			panel_in2: endpoint {
+				remote-endpoint = <&dsi_out>;
+			};
+		};
+	};
+
+	ports {
+		port {
+			dsi_out: endpoint {
+				remote-endpoint = <&panel_in1>;
+			};
+		};
+	};
+};
+
+&reserved_memory {
+	ramoops_mem: pstore-reserved-memory@110000 {
+		compatible = "ramoops";
+		reg = <0x0 0x110000 0x0 0x100000>;
+		record-size = <0x20000>;
+		console-size = <0x40000>;
+		pmsg-size = <0x40000>;
+	};
+
+	reserve-memory-ssmr {
+		compatible = "mediatek,reserve-memory-ssmr";
+		no-map;
+		size = <0 0x1000>;
+		alignment = <0 0x1000>;
+		alloc-ranges = <0 0xc0000000 4 0x00000000>;
+	};
+
+	zmc-default {
+		compatible = "mediatek,zone_movable_cma";
+		size = <0 0x35000000>;
+		alignment = <0 0x1000000>;
+		alloc-ranges = <0 0xc0000000 4 0x00000000>;
+	};
+};

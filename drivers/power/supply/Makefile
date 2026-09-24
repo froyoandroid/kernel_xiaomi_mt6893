@@ -134,6 +134,8 @@ obj-$(CONFIG_AXP288_FUEL_GAUGE) += axp288_fuel_gauge.o
 obj-$(CONFIG_AXP288_CHARGER)	+= axp288_charger.o
 obj-$(CONFIG_AGATE_CHARGER)	+= pmic-voter.o
 obj-$(CONFIG_AGATE_CHARGER) 	+= battery.o
+obj-$(CONFIG_CHOPIN_CHARGER)	+= pmic-voter.o
+obj-$(CONFIG_CHOPIN_CHARGER)	+= battery.o
 obj-$(CONFIG_PISSARRO_CHARGER)	+= pmic_voter.o
 
 ifeq ($(CONFIG_MACH_MT8173),y)
@@ -141,6 +143,8 @@ else
 	obj-y += mediatek/
 ifeq ($(CONFIG_AGATE_CHARGER),y)
 	obj-y += ti_agate/
+else ifeq ($(CONFIG_CHOPIN_CHARGER),y)
+	obj-y += ti_chopin/
 endif
 endif
 

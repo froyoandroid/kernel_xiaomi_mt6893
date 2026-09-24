@@ -59,5 +59,9 @@ config AGATE_CHARGER
 	bool "MTK charger for AGATE"
 	help
 	  Say yes In MTK charger AGATE.
+config CHOPIN_CHARGER
+	bool "MTK charger for CHOPIN"
+	help
+	  Say yes In MTK charger CHOPIN.
 source "drivers/misc/mediatek/typec/tcpc/Kconfig"
 source "drivers/misc/mediatek/typec/tcpc_agate/Kconfig"

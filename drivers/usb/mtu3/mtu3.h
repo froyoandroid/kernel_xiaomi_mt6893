@@ -327,7 +327,7 @@ struct ssusb_mtk {
 	/* u2 cdp */
 	struct work_struct dp_work;
 	struct charger_device *chg_dev;
-#ifdef CONFIG_AGATE_CHARGER
+#if defined(CONFIG_AGATE_CHARGER) || defined(CONFIG_CHOPIN_CHARGER)
 	struct charger_device *chg5_dev;
 #endif
 };

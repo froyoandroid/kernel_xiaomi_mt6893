@@ -4,6 +4,8 @@ subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/typec/inc
 
 ifeq ($(CONFIG_AGATE_CHARGER),y)
 obj-$(CONFIG_TCPC_CLASS) += tcpc_agate/
+else ifeq ($(CONFIG_CHOPIN_CHARGER),y)
+obj-$(CONFIG_TCPC_CLASS) += tcpc_chopin/
 else
 obj-$(CONFIG_TCPC_CLASS) += tcpc/
 endif

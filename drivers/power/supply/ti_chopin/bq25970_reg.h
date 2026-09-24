@@ -790,15 +790,32 @@
 #define BQ2597X_IBUS_LOW_DG_10US			0
 #define BQ2597X_IBUS_LOW_DG_5MS				1
 
-#define SC8551_IBUS_ADC_LSB				(15625 / 10000)
-#define SC8551_VBUS_ADC_LSB				(375 / 100)
-#define SC8551_VAC_ADC_LSB				5
-#define SC8551_VOUT_ADC_LSB				(125/100)
-#define SC8551_VBAT_ADC_LSB				(12575 /10000)
-#define SC8551_IBAT_ADC_LSB				(3125/1000)
-#define SC8551_TSBUS_ADC_LSB				1
-#define SC8551_TSBAT_ADC_LSB				1
-#define SC8551_TDIE_ADC_LSB				1
+/*
+ * SC8551 ADC scale factors. Most of these are fractional (VBAT is 1.2575 mV
+ * per LSB, IBUS 1.5625 mA, VBUS 3.75 mV), so they cannot be spelled as a
+ * single integer-valued macro: the preprocessor evaluates 12575 / 10000 to 1
+ * long before it is ever multiplied by a sample, silently dropping the
+ * fraction and under-reporting every reading. Keep numerator and denominator
+ * apart and let the caller multiply first, then divide.
+ */
+#define SC8551_IBUS_ADC_LSB_NUM				15625
+#define SC8551_IBUS_ADC_LSB_DEN				10000
+#define SC8551_VBUS_ADC_LSB_NUM				375
+#define SC8551_VBUS_ADC_LSB_DEN				100
+#define SC8551_VAC_ADC_LSB_NUM				5
+#define SC8551_VAC_ADC_LSB_DEN				1
+#define SC8551_VOUT_ADC_LSB_NUM				125
+#define SC8551_VOUT_ADC_LSB_DEN				100
+#define SC8551_VBAT_ADC_LSB_NUM				12575
+#define SC8551_VBAT_ADC_LSB_DEN				10000
+#define SC8551_IBAT_ADC_LSB_NUM				3125
+#define SC8551_IBAT_ADC_LSB_DEN				1000
+#define SC8551_TSBUS_ADC_LSB_NUM			1
+#define SC8551_TSBUS_ADC_LSB_DEN			1
+#define SC8551_TSBAT_ADC_LSB_NUM			1
+#define SC8551_TSBAT_ADC_LSB_DEN			1
+#define SC8551_TDIE_ADC_LSB_NUM				1
+#define SC8551_TDIE_ADC_LSB_DEN				1
 
 /* Register 00h */
 #define SC8551_BAT_OVP_BASE				3500

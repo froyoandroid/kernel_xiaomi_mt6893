@@ -1765,12 +1765,14 @@ int mtk_switch_charging_init2(struct charger_manager *info)
 	else
 		chr_err("*** Error: can't find tertiary charger\n");
 
-	info->chg5_dev = get_charger_by_name("quinary_chg");
-	if (info->chg5_dev)
-		chr_info("Found quinary charger [%s]\n",
-			info->chg5_dev->props.alias_name);
-	else
-		chr_err("*** Error: can't find quinary charger\n");
+	if (!info->battery_67w) {
+		info->chg5_dev = get_charger_by_name("quinary_chg");
+		if (info->chg5_dev)
+			chr_info("Found quinary charger [%s]\n",
+				info->chg5_dev->props.alias_name);
+		else
+			chr_err("*** Error: can't find quinary charger\n");
+	}
 
 	info->dvchg1_dev = get_charger_by_name("primary_divider_chg");
 	if (info->dvchg1_dev) {

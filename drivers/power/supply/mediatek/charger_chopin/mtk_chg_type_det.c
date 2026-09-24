@@ -1891,13 +1891,16 @@ bool upmu_is_chr_det(void)
 {
 	struct mt_charger *mtk_chg = NULL;
 	struct power_supply *psy = power_supply_get_by_name("charger");
+	bool chg_online;
 
 	if (!psy) {
 		pr_info("%s: get power supply failed\n", __func__);
 		return -EINVAL;
 	}
 	mtk_chg = power_supply_get_drvdata(psy);
-	return mtk_chg->chg_online;
+	chg_online = mtk_chg->chg_online;
+	power_supply_put(psy);
+	return chg_online;
 }
 
 /* Legacy api to prevent build error */
@@ -1914,17 +1917,20 @@ enum charger_type mt_get_charger_type(void)
 {
 	struct mt_charger *mtk_chg = NULL;
 	struct power_supply *psy = power_supply_get_by_name("charger");
+	enum charger_type chg_type;
 
 	if (!psy) {
 		pr_info("%s: get power supply failed\n", __func__);
 		return -EINVAL;
 	}
 	mtk_chg = power_supply_get_drvdata(psy);
+	chg_type = mtk_chg->chg_type;
+	power_supply_put(psy);
 
 	if (charger_manager_pd_is_online())
 		return STANDARD_CHARGER;
 
-	return mtk_chg->chg_type;
+	return chg_type;
 }
 
 bool mt_charger_plugin(void)
@@ -1932,6 +1938,7 @@ bool mt_charger_plugin(void)
 	struct mt_charger *mtk_chg = NULL;
 	struct power_supply *psy = power_supply_get_by_name("charger");
 	struct chg_type_info *cti = NULL;
+	bool plugin;
 
 	if (!psy) {
 		pr_info("%s: get power supply failed\n", __func__);
@@ -1939,9 +1946,11 @@ bool mt_charger_plugin(void)
 	}
 	mtk_chg = power_supply_get_drvdata(psy);
 	cti = mtk_chg->cti;
-	pr_info("%s plugin:%d\n", __func__, cti->plugin);
+	plugin = cti->plugin;
+	power_supply_put(psy);
+	pr_info("%s plugin:%d\n", __func__, plugin);
 
-	return cti->plugin;
+	return plugin;
 }
 
 static s32 __init mt_charger_det_init(void)

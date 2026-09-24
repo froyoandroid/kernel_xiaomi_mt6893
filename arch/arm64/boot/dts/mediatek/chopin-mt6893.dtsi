@@ -164,6 +164,7 @@
 	use_xmusb350_do_apsd;
 
 	/* distinguish 67w and 120w*/
+	battery_67w;
 	battery-67w;
 };
 
@@ -171,6 +172,10 @@
 	DISABLE_MTKBATTERY = <(1)>;
 	use-ti-gauge;
 	battery-67w;
+};
+
+&mmc1 {
+	status = "disabled";
 };
 
 &dsi0 {

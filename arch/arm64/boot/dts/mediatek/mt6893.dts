@@ -8223,6 +8223,12 @@ page_owner=on loop.max_part=7";
 	mt_charger: mt_charger {
 		compatible = "mediatek,mt-charger";
 		bootmode = <&chosen>;
+		/* Chopin/agate ship the 67W topology; mtk_chg_type_det reads
+		 * "battery-67w" here. Board overlays (chopin-mt6893.dtsi) are
+		 * never compiled into the shipped DTB, so the flag must live in
+		 * the base mt6893.dtb that AnyKernel3 flashes.
+		 */
+		battery-67w;
 	};
 
 	lk_charger: lk_charger {
@@ -8252,6 +8258,15 @@ page_owner=on loop.max_part=7";
 	charger: charger {
 		compatible = "mediatek,charger";
 		algorithm_name = "SwitchCharging2";
+		/* Chopin/agate 67W topology. mtk_charger.c reads "battery_67w"
+		 * (underscore) to keep the 67W path on the primary charger and
+		 * skip the absent quinary charger; the agate charger_agate/
+		 * pd_policy consumers read "battery-67w" (hyphen). Neither the
+		 * shipped stock DTBO nor the never-compiled board overlay set
+		 * these, so declare both here in the base DTB.
+		 */
+		battery_67w;
+		battery-67w;
 		/* enable_sw_jeita; */
 		/* enable_pe_plus; */
 		/* enable_pe_2; */
@@ -8408,6 +8423,13 @@ page_owner=on loop.max_part=7";
 	};
 
 	usbpd_pm: usbpd_pm {
+		/* pd_policy_manager reads "battery-67w" here to select the
+		 * bq2597x-master charge pump (present) over bq25980-master
+		 * (absent). The stock DTBO overlay sets every other usbpd_pm
+		 * property but omits this flag, so without it the driver spams
+		 * "cp_psy not found" and never enables PPS charge-pump charging.
+		 */
+		battery-67w;
 	};
 
 	pmic_clock_buffer_ctrl: pmic_clock_buffer_ctrl {

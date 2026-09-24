@@ -1903,6 +1903,21 @@ static void usb_psy_change_work(struct work_struct *work)
 
 	pr_debug("%s enter.\n", __func__);
 
+	/*
+	 * Sample VBUS presence here rather than in the notifier callback.
+	 * charger_dev_get_vbus_present() reaches the charge pump over I2C,
+	 * which takes bq->i2c_rw_lock and then waits for the transfer to
+	 * complete, so it can sleep. The power supply notifier chain is an
+	 * atomic one and __atomic_notifier_call_chain() runs it inside
+	 * rcu_read_lock(), where sleeping is not allowed.
+	 */
+	if (!pdpm->ch3_dev)
+		pdpm->ch3_dev = get_charger_by_name("tertiary_chg");
+
+	charger_dev_get_vbus_present(pdpm->ch3_dev, &pdpm->cp.vbus_pres);
+	if (!pdpm->cp.vbus_pres)
+		goto out;
+
 	if (!is_psy_voter_available(pdpm))
 		goto out;
 
@@ -1993,30 +2008,23 @@ static int usbpd_psy_notifier_cb(struct notifier_block *nb,
 
 	pr_debug("%s enter\n", __func__);
 
-	if (!pdpm->ch3_dev)
-		pdpm->ch3_dev = get_charger_by_name("tertiary_chg");
+	usbpd_check_cp_psy(pdpm);
+	usbpd_check_usb_psy(pdpm);
 
-	charger_dev_get_vbus_present(pdpm->ch3_dev, &pdpm->cp.vbus_pres);
+	if (!pdpm->cp_psy || !pdpm->usb_psy)
+		return NOTIFY_OK;
 
-	if (pdpm->cp.vbus_pres) {
-		usbpd_check_cp_psy(pdpm);
-		usbpd_check_usb_psy(pdpm);
-
-		if (!pdpm->cp_psy || !pdpm->usb_psy)
-			return NOTIFY_OK;
-
-		if (psy == pdpm->cp_psy || psy == pdpm->usb_psy) {
-			spin_lock_irqsave(&pdpm->psy_change_lock, flags);
-			if (!pdpm->psy_change_running) {
-				pdpm->psy_change_running = true;
-				pr_debug("%s psy_change is running\n", __func__);
-				if (psy == pdpm->cp_psy)
-					schedule_work(&pdpm->cp_psy_change_work);
-				else
-					schedule_work(&pdpm->usb_psy_change_work);
-			}
-			spin_unlock_irqrestore(&pdpm->psy_change_lock, flags);
+	if (psy == pdpm->cp_psy || psy == pdpm->usb_psy) {
+		spin_lock_irqsave(&pdpm->psy_change_lock, flags);
+		if (!pdpm->psy_change_running) {
+			pdpm->psy_change_running = true;
+			pr_debug("%s psy_change is running\n", __func__);
+			if (psy == pdpm->cp_psy)
+				schedule_work(&pdpm->cp_psy_change_work);
+			else
+				schedule_work(&pdpm->usb_psy_change_work);
 		}
+		spin_unlock_irqrestore(&pdpm->psy_change_lock, flags);
 	}
 
 	return NOTIFY_OK;

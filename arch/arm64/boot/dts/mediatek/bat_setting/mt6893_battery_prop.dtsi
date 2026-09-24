@@ -4,6 +4,13 @@
 */
 bat_gm30: battery{
 	compatible = "mediatek,bat_gm30";
+	/* Chopin/agate 67W topology; mtk_battery.c reads "battery-67w" to
+	 * pick the 67W FFC termination/soc curves. The stock DTBO overlay
+	 * (fragment@64) sets DISABLE_MTKBATTERY + use-ti-gauge but omits this
+	 * flag, and the board overlay is never compiled into the shipped DTB,
+	 * so declare it in the base battery node.
+	 */
+	battery-67w;
 	DIFFERENCE_FULLOCV_ITH = <(200)>;
 /*	Charging termination current*/
 	SHUTDOWN_1_TIME = <(5)>;

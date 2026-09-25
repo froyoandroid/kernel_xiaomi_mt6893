@@ -1360,7 +1360,11 @@ static struct clkchk_cfg_t cfg = {
 #endif
 	.bug_on_fail = false,
 #endif
+#ifdef _XIAOMI_CHOPIN_
+	.warn_on_fail = false,
+#else
 	.warn_on_fail = true,
+#endif
 	.compatible = compatible,
 	.off_pll_names = off_pll_names,
 	.notice_pll_names = notice_pll_names,

@@ -60,8 +60,10 @@ subdir-ccflags-y		+= -I$(IMGSENSOR_DRIVER_PATH)/$(MTK_PLATFORM)/camera_hw
 endif
 subdir-ccflags-y		+= -I$(IMGSENSOR_DRIVER_PATH)/common/$(COMMON_VERSION)/camera_hw
 
-# Enable parallelism
-# subdir-ccflags-y += -DNO_I2C_MTK -DSENSOR_PARALLEISM
+# Enable per-sensor locking and legacy I2C routing for Chopin.
+ifeq ($(CONFIG_BUILD_XIAOMI_CAMERA_IMAGE_NAMES),"mediatek/chopin")
+subdir-ccflags-y += -DSENSOR_PARALLEISM
+endif
 
 obj-y += seninf/
 

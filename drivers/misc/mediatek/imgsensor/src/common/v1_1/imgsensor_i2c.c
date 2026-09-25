@@ -6,6 +6,9 @@
 #include "imgsensor_common.h"
 #include "imgsensor_i2c.h"
 #include <linux/ratelimit.h>
+#ifdef _XIAOMI_CHOPIN_
+#include <linux/sched.h>
+#endif
 
 struct IMGSENSOR_I2C gi2c;
 #ifdef SENSOR_PARALLEISM
@@ -451,6 +454,11 @@ void imgsensor_i2c_filter_msg(struct IMGSENSOR_I2C_CFG *pi2c_cfg, bool en)
 #ifdef SENSOR_PARALLEISM
 #include <linux/unistd.h>
 #include <linux/syscalls.h>
+#ifdef _XIAOMI_CHOPIN_
+#define imgsensor_thread_id() task_pid_nr(current)
+#else
+#define imgsensor_thread_id() sys_gettid()
+#endif
 
 
 struct IMGSENSOR_I2C_CFG *pgi2c_cfg_legacy[IMGSENSOR_SENSOR_IDX_MAX_NUM];
@@ -463,7 +471,7 @@ void imgsensor_i2c_set_device(struct IMGSENSOR_I2C_CFG *pi2c_cfg)
 {
 #ifdef SENSOR_PARALLEISM
 	int i = 0;
-	pid_t _tid = sys_gettid();
+	pid_t _tid = imgsensor_thread_id();
 
 	mutex_lock(&i2c_resource_mutex);
 	if (pi2c_cfg == NULL) {
@@ -495,7 +503,7 @@ struct IMGSENSOR_I2C_CFG *imgsensor_i2c_get_device(void)
 #ifdef SENSOR_PARALLEISM
 	int i = 0;
 	struct IMGSENSOR_I2C_CFG *pi2c_cfg = NULL;
-	pid_t _tid = sys_gettid();
+	pid_t _tid = imgsensor_thread_id();
 	/* mutex_lock(&i2c_resource_mutex); */
 
 	for (i = 0; i < IMGSENSOR_SENSOR_IDX_MAX_NUM; i++) {

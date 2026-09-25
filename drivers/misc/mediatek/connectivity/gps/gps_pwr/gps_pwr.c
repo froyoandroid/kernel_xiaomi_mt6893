@@ -119,11 +119,19 @@ static ssize_t gps_pwr_read(struct file *file, char __user *buf, size_t count, l
 	if (count > sizeof(int))
 		count = sizeof(int);
 
+#ifdef _XIAOMI_CHOPIN_
+	if (copy_to_user(buf, (void *)&battery_level, count)) {
+#else
 	if (copy_to_user(buf, (void *)&battery_level, sizeof(int))) {
+#endif
 		pr_info("gps_pwr_read failed,because copy_to_user error\n");
 		retval = -EFAULT;
 	} else {
+#ifdef _XIAOMI_CHOPIN_
+		retval = count;
+#else
 		retval = sizeof(int);
+#endif
 		has_new_battery_level = false;
 		return retval;
 	}

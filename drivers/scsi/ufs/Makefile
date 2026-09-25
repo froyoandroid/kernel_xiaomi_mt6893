@@ -21,6 +21,9 @@ ccflags-y += -I$(srctree)/$(MTK_MISC_INC)
 ccflags-y += -I$(srctree)/$(MTK_MISC_INC)/mt-plat
 ccflags-y += -I$(srctree)/$(MTK_MISC_INC)/mt-plat/$(MTK_PLATFORM)/include
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/include
+ifeq ($(CONFIG_BUILD_XIAOMI_CAMERA_IMAGE_NAMES),"mediatek/chopin")
+ccflags-y += -D_XIAOMI_CHOPIN_
+endif
 endif
 
 obj-$(CONFIG_SCSI_UFS_DWC_TC_PCI) += tc-dwc-g210-pci.o ufshcd-dwc.o tc-dwc-g210.o

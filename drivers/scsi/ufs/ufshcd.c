@@ -9502,6 +9502,21 @@ int ufshcd_runtime_idle(struct ufs_hba *hba)
 }
 EXPORT_SYMBOL(ufshcd_runtime_idle);
 
+#ifdef _XIAOMI_CHOPIN_
+static void ufshcd_scsi_device_quiesce(struct scsi_device *sdev)
+{
+	if (!sdev)
+		return;
+	/*
+	 * reboot can race a prior suspend quiesce. scsi_device_quiesce()
+	 * WARN_ON_ONCE()s when quiesced_by is already a different task.
+	 */
+	if (sdev->quiesced_by && sdev->quiesced_by != current)
+		return;
+	scsi_device_quiesce(sdev);
+}
+#endif
+
 static void ufshcd_device_quiesce(struct ufs_hba *hba)
 {
 	struct scsi_device *scsi_d;
@@ -9515,17 +9530,29 @@ static void ufshcd_device_quiesce(struct ufs_hba *hba)
 	 */
 	for (i = 0; i < hba->dev_info.max_lu_supported; i++) {
 		scsi_d = scsi_device_lookup(hba->host, 0, 0, i);
+#ifdef _XIAOMI_CHOPIN_
+		ufshcd_scsi_device_quiesce(scsi_d);
+#else
 		if (scsi_d)
 			scsi_device_quiesce(scsi_d);
+#endif
 	}
 
 	scsi_d = scsi_device_lookup(hba->host, 0, 0,
 		ufshcd_upiu_wlun_to_scsi_wlun(UFS_UPIU_BOOT_WLUN));
+#ifdef _XIAOMI_CHOPIN_
+	ufshcd_scsi_device_quiesce(scsi_d);
+#else
 	if (scsi_d)
 		scsi_device_quiesce(scsi_d);
+#endif
 
+#ifdef _XIAOMI_CHOPIN_
+	ufshcd_scsi_device_quiesce(hba->sdev_ufs_device);
+#else
 	if (hba->sdev_ufs_device)
 		scsi_device_quiesce(hba->sdev_ufs_device);
+#endif
 
 	ufs_mtk_rpmb_quiesce(hba);
 }

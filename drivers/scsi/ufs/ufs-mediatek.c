@@ -355,8 +355,17 @@ void ufs_mtk_rpmb_quiesce(struct ufs_hba *hba)
 {
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 
+#ifdef _XIAOMI_CHOPIN_
+	if (!host->sdev_ufs_rpmb)
+		return;
+	if (host->sdev_ufs_rpmb->quiesced_by &&
+	    host->sdev_ufs_rpmb->quiesced_by != current)
+		return;
+	scsi_device_quiesce(host->sdev_ufs_rpmb);
+#else
 	if (host->sdev_ufs_rpmb)
 		scsi_device_quiesce(host->sdev_ufs_rpmb);
+#endif
 }
 
 /**

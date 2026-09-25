@@ -112,6 +112,9 @@ ccflags-y += -I$(srctree)/drivers/devfreq
 obj-y		+= cmdq_hci.o
 endif
 ccflags-y += -I$(srctree)/drivers/char/rpmb/
+ifeq ($(CONFIG_BUILD_XIAOMI_CAMERA_IMAGE_NAMES),"mediatek/chopin")
+ccflags-y += -D_XIAOMI_CHOPIN_
+endif
 
 obj-$(CONFIG_MMC_SDHCI_XENON)	+= sdhci-xenon-driver.o
 sdhci-xenon-driver-y		+= sdhci-xenon.o sdhci-xenon-phy.o

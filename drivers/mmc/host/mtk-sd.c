@@ -3025,6 +3025,17 @@ static int msdc_drv_probe(struct platform_device *pdev)
 		dev_info(&pdev->dev, "no eMMC boot\n");
 		return -ENODEV;
 	}
+#ifdef _XIAOMI_CHOPIN_
+	/*
+	 * Chopin is UFS-only and has no SD slot. Stock DTBO still
+	 * enables mmc1; leave it unbound so mmc_rescan cannot sit
+	 * in msdc_ops_set_ios.
+	 */
+	if (boot_type != BOOTDEV_SDMMC) {
+		dev_info(&pdev->dev, "chopin: no SD slot, skip msdc\n");
+		return -ENODEV;
+	}
+#endif
 
 	/* Allocate MMC host for this device */
 	mmc = mmc_alloc_host(sizeof(struct msdc_host), &pdev->dev);

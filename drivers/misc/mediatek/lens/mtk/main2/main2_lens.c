@@ -31,7 +31,7 @@
 #include <linux/ktime.h>
 /* ------------------------- */
 
-#if defined(CONFIG_MACH_MT6779)
+#if defined(CONFIG_MACH_MT6779) || defined(_XIAOMI_CHOPIN_)
 #include <archcounter_timesync.h>
 #endif
 
@@ -298,7 +298,7 @@ static long AF_ControlParam(unsigned long a_u4Param)
 	switch (CtrlCmd.i8CmdID) {
 	case CONVERT_CCU_TIMESTAMP:
 		{
-#if defined(CONFIG_MACH_MT6779)
+#if defined(CONFIG_MACH_MT6779) || defined(_XIAOMI_CHOPIN_)
 		long long monotonicTime = 0;
 		long long hwTickCnt     = 0;
 

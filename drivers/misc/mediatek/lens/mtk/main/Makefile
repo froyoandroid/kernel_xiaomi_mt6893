@@ -33,6 +33,9 @@ endif
 ifeq ($(CONFIG_MACH_MT6779), y)
   ccflags-y += -I$(srctree)/drivers/misc/mediatek/timer/timesync/
 endif
+ifeq ($(CONFIG_BUILD_XIAOMI_CAMERA_IMAGE_NAMES),"mediatek/chopin")
+  ccflags-y += -I$(srctree)/drivers/misc/mediatek/timer/timesync/
+endif
 
 obj-$(CONFIG_MTK_LENS)    += mainaf.o
 

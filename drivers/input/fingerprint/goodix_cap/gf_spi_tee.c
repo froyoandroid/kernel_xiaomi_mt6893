@@ -239,6 +239,44 @@ long int kernel_time(unsigned int step)
 /* -------------------------------------------------------------------- */
 static int gf_get_gpio_dts_info(struct gf_device *gf_dev)
 {
+#ifdef _XIAOMI_CHOPIN_
+	struct device_node *node;
+	struct platform_device *pdev;
+	struct pinctrl_state *state;
+	int ret;
+
+	node = of_find_compatible_node(NULL, NULL, "mediatek,goodix-fp");
+	if (!node)
+		return -ENODEV;
+	pdev = of_find_device_by_node(node);
+	of_node_put(node);
+	if (!pdev)
+		return -EPROBE_DEFER;
+	gf_dev->pinctrl_gpios = pinctrl_get(&pdev->dev);
+	put_device(&pdev->dev);
+	if (IS_ERR(gf_dev->pinctrl_gpios))
+		return PTR_ERR(gf_dev->pinctrl_gpios);
+
+	gf_dev->pins_reset_high = pinctrl_lookup_state(gf_dev->pinctrl_gpios,
+						    "reset_high");
+	if (IS_ERR(gf_dev->pins_reset_high))
+		return PTR_ERR(gf_dev->pins_reset_high);
+	gf_dev->pins_reset_low = pinctrl_lookup_state(gf_dev->pinctrl_gpios,
+						   "reset_low");
+	if (IS_ERR(gf_dev->pins_reset_low))
+		return PTR_ERR(gf_dev->pins_reset_low);
+	gf_dev->pins_spi_cs = pinctrl_lookup_state(gf_dev->pinctrl_gpios,
+						 "spi_cs");
+	if (IS_ERR(gf_dev->pins_spi_cs))
+		return PTR_ERR(gf_dev->pins_spi_cs);
+	ret = pinctrl_select_state(gf_dev->pinctrl_gpios, gf_dev->pins_spi_cs);
+	if (ret)
+		return ret;
+	state = pinctrl_lookup_state(gf_dev->pinctrl_gpios, "eint_init");
+	if (IS_ERR(state))
+		return PTR_ERR(state);
+	return pinctrl_select_state(gf_dev->pinctrl_gpios, state);
+#else
 #ifdef CONFIG_OF
 	int ret;
 	int virq;
@@ -359,6 +397,7 @@ static int gf_get_gpio_dts_info(struct gf_device *gf_dev)
 
 #endif
 	return 0;
+#endif
 }
 
 static int gf_get_sensor_dts_info(void)
@@ -677,6 +716,28 @@ static int gf_fb_notifier_callback(struct notifier_block *self,
 	FUNC_EXIT();
 	return retval;
 }
+#ifdef _XIAOMI_CHOPIN_
+static void gf_register_notifier(struct gf_device *gf_dev)
+{
+	mutex_lock(&gf_dev->buf_lock);
+	if (!gf_dev->notifier_registered) {
+		gf_dev->notifier.notifier_call = gf_fb_notifier_callback;
+		if (!mi_disp_register_client(&gf_dev->notifier))
+			gf_dev->notifier_registered = true;
+	}
+	mutex_unlock(&gf_dev->buf_lock);
+}
+
+static void gf_unregister_notifier(struct gf_device *gf_dev)
+{
+	mutex_lock(&gf_dev->buf_lock);
+	if (gf_dev->notifier_registered) {
+		mi_disp_unregister_client(&gf_dev->notifier);
+		gf_dev->notifier_registered = false;
+	}
+	mutex_unlock(&gf_dev->buf_lock);
+}
+#endif
 #endif //goodix_fb_state_chg_callback
 
 #endif //CONFIG_HAS_EARLYSUSPEND
@@ -898,8 +959,12 @@ static long gf_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 #else
 #ifndef GOODIX_DRM_INTERFACE_WA
 		/* register screen on/off callback */
+#ifdef _XIAOMI_CHOPIN_
+		gf_register_notifier(gf_dev);
+#else
 		gf_dev->notifier.notifier_call = gf_fb_notifier_callback;
 		mi_disp_register_client(&gf_dev->notifier);
+#endif
 		//fb_register_client(&gf_dev->notifier);
 #endif
 #endif
@@ -940,7 +1005,11 @@ static long gf_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 #else
 #ifndef GOODIX_DRM_INTERFACE_WA
 		//fb_unregister_client(&gf_dev->notifier);
+#ifdef _XIAOMI_CHOPIN_
+		gf_unregister_notifier(gf_dev);
+#else
 		mi_disp_unregister_client(&gf_dev->notifier);
+#endif
 #endif
 #endif
 
@@ -1401,8 +1470,12 @@ static ssize_t gf_debug_store(struct device *dev,
 #else
 #ifndef GOODIX_DRM_INTERFACE_WA
 		/* register screen on/off callback */
+#ifdef _XIAOMI_CHOPIN_
+		gf_register_notifier(gf_dev);
+#else
 		gf_dev->notifier.notifier_call = gf_fb_notifier_callback;
 		mi_disp_register_client(&gf_dev->notifier);
+#endif
 		//fb_register_client(&gf_dev->notifier);
 #endif
 #endif
@@ -1992,6 +2065,9 @@ int gf_spi_read_bytes(struct gf_device *gf_dev, u16 addr, u32 data_len,
 	struct spi_transfer *xfer = NULL;
 	u8 *tmp_buf = NULL;
 	u32 package, reminder, retry;
+#ifdef _XIAOMI_CHOPIN_
+	int status = 0;
+#endif
 
 	package = (data_len + 2) / 1024;
 	reminder = (data_len + 2) % 1024;
@@ -2033,7 +2109,13 @@ int gf_spi_read_bytes(struct gf_device *gf_dev, u16 addr, u32 data_len,
 
 	xfer[0].delay_usecs = 5;
 	spi_message_add_tail(&xfer[0], &msg);
+#ifdef _XIAOMI_CHOPIN_
+	status = spi_sync(gf_dev->spi, &msg);
+	if (status)
+		goto out;
+#else
 	spi_sync(gf_dev->spi, &msg);
+#endif
 
 	spi_message_init(&msg);
 	/* memset((tmp_buf + 4), 0x00, data_len + 1); */
@@ -2052,7 +2134,13 @@ int gf_spi_read_bytes(struct gf_device *gf_dev, u16 addr, u32 data_len,
 #endif
 	xfer[1].delay_usecs = 5;
 	spi_message_add_tail(&xfer[1], &msg);
+#ifdef _XIAOMI_CHOPIN_
+	status = spi_sync(gf_dev->spi, &msg);
+	if (status)
+		goto out;
+#else
 	spi_sync(gf_dev->spi, &msg);
+#endif
 
 	/* copy received data */
 	if (retry)
@@ -2075,7 +2163,13 @@ int gf_spi_read_bytes(struct gf_device *gf_dev, u16 addr, u32 data_len,
 #endif
 		xfer[2].delay_usecs = 5;
 		spi_message_add_tail(&xfer[2], &msg);
+#ifdef _XIAOMI_CHOPIN_
+		status = spi_sync(gf_dev->spi, &msg);
+		if (status)
+			goto out;
+#else
 		spi_sync(gf_dev->spi, &msg);
+#endif
 
 		spi_message_init(&msg);
 		*(tmp_buf + 4) = 0xF1;
@@ -2083,15 +2177,28 @@ int gf_spi_read_bytes(struct gf_device *gf_dev, u16 addr, u32 data_len,
 		xfer[3].rx_buf = tmp_buf + 4;
 		xfer[3].len = reminder + 1;
 #ifdef CONFIG_SPI_MT65XX
+#ifdef _XIAOMI_CHOPIN_
+		xfer[3].speed_hz = gf_spi_speed;
+#else
 		xfer[2].speed_hz = gf_spi_speed;
+#endif
 #endif
 		xfer[3].delay_usecs = 5;
 		spi_message_add_tail(&xfer[3], &msg);
+#ifdef _XIAOMI_CHOPIN_
+		status = spi_sync(gf_dev->spi, &msg);
+		if (status)
+			goto out;
+#else
 		spi_sync(gf_dev->spi, &msg);
+#endif
 
 		memcpy((rx_buf + package * 1024 - 1), (tmp_buf + 6),
 		       (reminder - 1));
 	}
+#ifdef _XIAOMI_CHOPIN_
+out:
+#endif
 #ifndef CONFIG_SPI_MT65XX
 	/* restore to FIFO mode if has used DMA */
 	if ((data_len + 1) > 32) {
@@ -2103,7 +2210,11 @@ int gf_spi_read_bytes(struct gf_device *gf_dev, u16 addr, u32 data_len,
 	if (xfer != NULL)
 		xfer = NULL;
 
+#ifdef _XIAOMI_CHOPIN_
+	return status;
+#else
 	return 0;
+#endif
 }
 
 static int gf_probe(struct spi_device *spi);
@@ -2127,6 +2238,11 @@ static int gf_probe(struct spi_device *spi)
 	struct gf_device *gf_dev = NULL;
 	int status = -EINVAL;
 	unsigned char rx_test[10] = { 0 };
+#ifdef _XIAOMI_CHOPIN_
+	bool supply_enabled = false;
+	bool clock_enabled = false;
+	bool performance_created = false;
+#endif
 
 	// int retval = 0;
 
@@ -2204,6 +2320,14 @@ static int gf_probe(struct spi_device *spi)
 		gf_debug(ERR_LOG, "malloc spi buffer fail");
 		goto err_freqbuff;
 	}
+#ifdef _XIAOMI_CHOPIN_
+	buck = regulator_get_optional(&spi->dev, "vfp");
+	if (IS_ERR(buck)) {
+		status = PTR_ERR(buck);
+		buck = NULL;
+		goto err_freqbuff;
+	}
+#else
 #ifdef CONFIG_MFD_MT6362
 	buck = regulator_get(NULL, "mt6362-ldo1");
 #else
@@ -2214,6 +2338,7 @@ static int gf_probe(struct spi_device *spi)
 		gf_debug(INFO_LOG, "regulator_get fail");
 		goto err_freqbuff;
 	}
+#endif
 
 #ifdef CONFIG_GOODIX_K16_SENSOR
 	status = regulator_set_voltage(buck, 3000000, 3000000);
@@ -2230,6 +2355,9 @@ static int gf_probe(struct spi_device *spi)
 		gf_debug(ERR_LOG, "%s, regulator_enable fail!!\n", __func__);
 		goto err_freqbuff;
 	}
+#ifdef _XIAOMI_CHOPIN_
+	supply_enabled = true;
+#endif
 
 	status = regulator_get_voltage(buck);
 	gf_debug(ERR_LOG, "%s, regulator_value %d!!\n", __func__,status);
@@ -2237,9 +2365,18 @@ static int gf_probe(struct spi_device *spi)
 	/* get gpio info from dts or defination */
 	// printk("goodix goto test switch miso pin mode\n");
 
+#ifdef _XIAOMI_CHOPIN_
+	status = gf_get_gpio_dts_info(gf_dev);
+	if (status)
+		goto err_freqbuff;
+	status = gf_get_sensor_dts_info();
+	if (status)
+		goto err_freqbuff;
+#else
 	gf_get_gpio_dts_info(gf_dev);
 
 	gf_get_sensor_dts_info();
+#endif
 
 	//pr_err("%s() switch miso pin mode\n", __func__);
 	//pinctrl_select_state(gf_dev->pinctrl_gpios, gf_dev->pins_miso_spi);
@@ -2251,6 +2388,9 @@ static int gf_probe(struct spi_device *spi)
 
 	pr_err("%s %d now enable spi clk API", __func__, __LINE__);
 	gf_spi_clk_enable(gf_dev, 1);
+#ifdef _XIAOMI_CHOPIN_
+	clock_enabled = true;
+#endif
 
 	pr_err("%s %d now enable spi clk Done", __func__, __LINE__);
 
@@ -2267,8 +2407,17 @@ static int gf_probe(struct spi_device *spi)
 			 __func__);
 	}
 
+#ifdef _XIAOMI_CHOPIN_
+	performance_created = true;
+#endif
 	mdelay(1);
+#ifdef _XIAOMI_CHOPIN_
+	status = gf_spi_read_bytes(gf_dev, 0x0000, 4, rx_test);
+	if (status)
+		goto err_freqbuff;
+#else
 	gf_spi_read_bytes(gf_dev, 0x0000, 4, rx_test);
+#endif
 	printk("%s rx_test chip id:0x%x 0x%x 0x%x 0x%x \n", __func__,
 	       rx_test[0], rx_test[1], rx_test[2], rx_test[3]);
 
@@ -2284,6 +2433,11 @@ static int gf_probe(struct spi_device *spi)
 			pr_err("%s cannot find the sensor,now exit\n",
 			       __func__);
 			spi_fingerprint = spi;
+#ifdef _XIAOMI_CHOPIN_
+			/* Keep the powered SPI device for the FPC platform driver. */
+			sysfs_remove_group(&spi->dev.kobj, &performance_attr_group);
+			pinctrl_put(gf_dev->pinctrl_gpios);
+#endif
 			gf_hw_power_enable(gf_dev, 0);
 			gf_spi_clk_enable(gf_dev, 0);
 			kfree(gf_dev->spi_buffer);
@@ -2492,12 +2646,29 @@ err_fw:
 #endif
 //err_readid:
 	pr_err("%s cannot find the sensor,now exit\n", __func__);
+#ifndef _XIAOMI_CHOPIN_
 	gf_hw_power_enable(gf_dev, 0);
 	gf_spi_clk_enable(gf_dev, 0);
 	kfree(gf_dev->spi_buffer);
+#endif
 err_freqbuff:
 	//kfree(freq_to_set);
 err_buf:
+#ifdef _XIAOMI_CHOPIN_
+	if (performance_created)
+		sysfs_remove_group(&spi->dev.kobj, &performance_attr_group);
+	if (clock_enabled)
+		gf_spi_clk_enable(gf_dev, 0);
+	if (!IS_ERR_OR_NULL(gf_dev->pinctrl_gpios))
+		pinctrl_put(gf_dev->pinctrl_gpios);
+	if (supply_enabled)
+		regulator_disable(buck);
+	if (buck) {
+		regulator_put(buck);
+		buck = NULL;
+	}
+	kfree(gf_dev->spi_buffer);
+#endif
 	mutex_destroy(&gf_dev->buf_lock);
 	mutex_destroy(&gf_dev->release_lock);
 	//spi_set_drvdata(spi, NULL);
@@ -2531,7 +2702,11 @@ static int gf_remove(struct spi_device *spi)
 #else
 #ifndef GOODIX_DRM_INTERFACE_WA
 	//fb_unregister_client(&gf_dev->notifier);
+#ifdef _XIAOMI_CHOPIN_
+	gf_unregister_notifier(gf_dev);
+#else
 	mi_disp_unregister_client(&gf_dev->notifier);
+#endif
 #endif
 #endif
 

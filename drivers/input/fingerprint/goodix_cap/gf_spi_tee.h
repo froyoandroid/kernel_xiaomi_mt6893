@@ -227,6 +227,9 @@ struct gf_device {
 	u32 irq;
 	u8 fb_black;
 	u8 wait_finger_down;
+#ifdef _XIAOMI_CHOPIN_
+	bool notifier_registered;
+#endif
 #ifdef CONFIG_OF
 	struct pinctrl *pinctrl_gpios;
 	struct pinctrl_state *pins_irq;

@@ -163,16 +163,41 @@ static int initdrv(void)
 	int i          = 0;
 	char (*puSendCmdArray)[2];
 
+#if defined(_XIAOMI_CHOPIN_)
+	char puSendCmdArray_CHOPIN_SUNNY[7][2] = {
+	{0x02, 0x01}, {0x02, 0x00}, {0xFE, 0xFE},
+	{0x02, 0x02}, {0x06, 0x80}, {0x07, 0x66}, {0xFE, 0xFE},
+	};
+
+	char puSendCmdArray_CHOPIN_OFILM[8][2] = {
+	{0x02, 0x01}, {0x02, 0x00}, {0xFE, 0xFE},
+	{0x02, 0x02}, {0x06, 0x80}, {0x07, 0x6f}, {0x10, 0x01}, {0xFE, 0xFE},
+	};
+#elif defined(_XIAOMI_AGATE_)
 	char puSendCmdArray_AGATE[7][2] = {
 	{0x02, 0x01}, {0x02, 0x00}, {0xFE, 0xFE},
 	{0x02, 0x02}, {0x06, 0x80}, {0x07, 0x7C}, {0xFE, 0xFE},
 	};
+#endif
 
 	iVendorID = read_vendor_id(0x01);
 	LOG_INF("vendor id = 0x%x", iVendorID);
 
+#if defined(_XIAOMI_CHOPIN_)
+	if (0x01 == iVendorID) {
+		puSendCmdArray = puSendCmdArray_CHOPIN_SUNNY;
+		cmd_number = 7;
+	} else if (0x07 == iVendorID) {
+		puSendCmdArray = puSendCmdArray_CHOPIN_OFILM;
+		cmd_number = 8;
+	} else {
+		puSendCmdArray = puSendCmdArray_CHOPIN_SUNNY;
+		cmd_number = 7;
+	}
+#elif defined(_XIAOMI_AGATE_)
 	puSendCmdArray = puSendCmdArray_AGATE;
 	cmd_number = 7;
+#endif
 
 	LOG_INF("InitDrv[1] %p, %p\n", &(puSendCmdArray[1][0]),
 			puSendCmdArray[1]);

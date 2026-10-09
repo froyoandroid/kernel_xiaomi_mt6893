@@ -16,38 +16,41 @@ echo -e "Building for: chopin\n"
 # Toolchain: locate an LLVM/clang toolchain.
 # Export TC_DIR to override; otherwise probe common roots for a clang-r* build.
 SELF_DIR="$(cd "$(dirname "$0")" && pwd)"
+TOOLCHAIN_ROOTS=(
+  "$SELF_DIR/../toolchain"
+  "$SELF_DIR/toolchain"
+  "$SELF_DIR/../toolchains"
+  "$SELF_DIR/toolchains"
+  "$HOME/toolchain"
+  "$HOME/toolchains"
+  "/root/poco/toolchain"
+  "/root/poco/toolchains"
+  "/root/toolchain"
+  "/root/toolchains"
+)
 if [ -n "$TC_DIR" ] && [ -x "$TC_DIR/bin/clang" ]; then
   TC_DIR="$(cd "$TC_DIR" && pwd)"
 else
   TC_DIR=""
-  for root in \
-    "$SELF_DIR/../toolchains" \
-    "$SELF_DIR/toolchains" \
-    "$HOME/toolchains" \
-    "/root/poco/toolchains" \
-    "/root/toolchains"; do
+  PINNED="clang-r596125"
+  for root in "${TOOLCHAIN_ROOTS[@]}"; do
     [ -d "$root" ] || continue
-    # Prefer the pinned release, else fall back to the newest clang-r* present.
-    if [ -x "$root/clang-r547379/bin/clang" ]; then
-      TC_DIR="$root/clang-r547379"
+    # Prefer the pinned release, else the highest clang-r* present.
+    if [ -x "$root/$PINNED/bin/clang" ]; then
+      TC_DIR="$root/$PINNED"
       break
     fi
-    for d in "$root"/clang-r*; do
-      [ -x "$d/bin/clang" ] || continue
-      TC_DIR="$d"
+    for d in $(ls -d "$root"/clang-r* 2>/dev/null | sort -V); do
+      [ -x "$d/bin/clang" ] && TC_DIR="$d"
     done
     [ -n "$TC_DIR" ] && break
   done
 fi
 
 if [ -z "$TC_DIR" ]; then
-  echo "Toolchain directory not found! Looked for clang-r* under:"
-  echo "  $SELF_DIR/../toolchains"
-  echo "  $SELF_DIR/toolchains"
-  echo "  $HOME/toolchains"
-  echo "  /root/poco/toolchains"
-  echo "  /root/toolchains"
-  echo "Set TC_DIR to override."
+  echo "Toolchain directory not found! Looked for clang-r* under:" >&2
+  printf '  %s\n' "${TOOLCHAIN_ROOTS[@]}" >&2
+  echo "Set TC_DIR to override." >&2
   exit 1
 fi
 

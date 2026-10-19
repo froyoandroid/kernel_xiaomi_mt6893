@@ -798,6 +798,93 @@ static int cpu_uclamp_max_show(struct seq_file *sf, void *v)
 	cpu_uclamp_print(sf, UCLAMP_MAX);
 	return 0;
 }
+
+/*
+ * Stock 4.14 schedtune ABI: util.{min,max} take a raw capacity in
+ * [0..SCHED_CAPACITY_SCALE], util.{min,max}.pct take an integer percent,
+ * and util.{min,max}.effective report the clamp after hierarchy
+ * propagation. The Chopin vendor task_profiles.json binds the UClampMin
+ * and UClampMax attributes to schedtune.util.min and schedtune.util.max.
+ * These share uclamp_req[] and uclamp_pct[] with uclamp.{min,max}, so
+ * every interface sees the same value.
+ */
+static int st_util_clamp_write(struct cgroup_subsys_state *css,
+			       enum uclamp_id clamp_id, u64 value)
+{
+	struct schedtune *st;
+
+	if (value > SCHED_CAPACITY_SCALE)
+		return -ERANGE;
+
+	mutex_lock(&uclamp_mutex);
+	rcu_read_lock();
+
+	st = css_st(css);
+	if (st->uclamp_req[clamp_id].value != value)
+		uclamp_se_set(&st->uclamp_req[clamp_id], value, false);
+	st->uclamp_pct[clamp_id] =
+		div_u64(value * UCLAMP_PERCENT_SCALE, SCHED_CAPACITY_SCALE);
+	cpu_util_update_eff(css);
+
+	rcu_read_unlock();
+	mutex_unlock(&uclamp_mutex);
+
+	static_branch_enable(&sched_uclamp_used);
+
+	return 0;
+}
+
+static int st_util_min_write(struct cgroup_subsys_state *css,
+			     struct cftype *cft, u64 value)
+{
+	return st_util_clamp_write(css, UCLAMP_MIN, value);
+}
+
+static int st_util_max_write(struct cgroup_subsys_state *css,
+			     struct cftype *cft, u64 value)
+{
+	return st_util_clamp_write(css, UCLAMP_MAX, value);
+}
+
+static int st_util_min_pct_write(struct cgroup_subsys_state *css,
+				 struct cftype *cft, u64 pct)
+{
+	if (pct > 100)
+		return -ERANGE;
+	return st_util_clamp_write(css, UCLAMP_MIN, scale_from_percent(pct));
+}
+
+static int st_util_max_pct_write(struct cgroup_subsys_state *css,
+				 struct cftype *cft, u64 pct)
+{
+	if (pct > 100)
+		return -ERANGE;
+	return st_util_clamp_write(css, UCLAMP_MAX, scale_from_percent(pct));
+}
+
+static u64 st_util_min_read(struct cgroup_subsys_state *css,
+			    struct cftype *cft)
+{
+	return css_st(css)->uclamp_req[UCLAMP_MIN].value;
+}
+
+static u64 st_util_max_read(struct cgroup_subsys_state *css,
+			    struct cftype *cft)
+{
+	return css_st(css)->uclamp_req[UCLAMP_MAX].value;
+}
+
+static u64 st_util_min_effective_read(struct cgroup_subsys_state *css,
+				      struct cftype *cft)
+{
+	return css_st(css)->uclamp[UCLAMP_MIN].value;
+}
+
+static u64 st_util_max_effective_read(struct cgroup_subsys_state *css,
+				      struct cftype *cft)
+{
+	return css_st(css)->uclamp[UCLAMP_MAX].value;
+}
 #endif
 
 static struct cftype files[] = {
@@ -823,6 +910,38 @@ static struct cftype files[] = {
 		.flags = CFTYPE_NOT_ON_ROOT,
 		.seq_show = cpu_uclamp_max_show,
 		.write = cpu_uclamp_max_write,
+	},
+	{
+		.name = "util.min",
+		.flags = CFTYPE_NOT_ON_ROOT,
+		.read_u64 = st_util_min_read,
+		.write_u64 = st_util_min_write,
+	},
+	{
+		.name = "util.min.pct",
+		.flags = CFTYPE_NOT_ON_ROOT,
+		.write_u64 = st_util_min_pct_write,
+	},
+	{
+		.name = "util.min.effective",
+		.flags = CFTYPE_NOT_ON_ROOT,
+		.read_u64 = st_util_min_effective_read,
+	},
+	{
+		.name = "util.max",
+		.flags = CFTYPE_NOT_ON_ROOT,
+		.read_u64 = st_util_max_read,
+		.write_u64 = st_util_max_write,
+	},
+	{
+		.name = "util.max.pct",
+		.flags = CFTYPE_NOT_ON_ROOT,
+		.write_u64 = st_util_max_pct_write,
+	},
+	{
+		.name = "util.max.effective",
+		.flags = CFTYPE_NOT_ON_ROOT,
+		.read_u64 = st_util_max_effective_read,
 	},
 #endif
 	{ }	/* terminate */

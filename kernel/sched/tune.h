@@ -1,4 +1,7 @@
 
+#ifndef _SCHED_TUNE_H
+#define _SCHED_TUNE_H
+
 #ifdef CONFIG_SCHED_TUNE
 
 #include <linux/reciprocal_div.h>
@@ -13,6 +16,7 @@ struct target_nrg {
 };
 
 int schedtune_cpu_boost_with(int cpu, struct task_struct *p);
+unsigned long stune_util(int cpu, unsigned long other_util);
 int schedtune_task_boost(struct task_struct *tsk);
 
 int schedtune_prefer_idle(struct task_struct *tsk);
@@ -40,3 +44,5 @@ void uclamp_update_root_st(void);
 #define schedtune_dequeue_task(task, cpu) do { } while (0)
 
 #endif /* CONFIG_SCHED_TUNE */
+
+#endif /* _SCHED_TUNE_H */

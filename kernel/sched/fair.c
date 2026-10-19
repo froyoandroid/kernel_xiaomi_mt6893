@@ -6087,6 +6087,15 @@ long schedtune_task_margin(struct task_struct *task)
 	return margin;
 }
 
+/* CPU utilization (CFS + other_util) including the schedtune boost margin */
+unsigned long stune_util(int cpu, unsigned long other_util)
+{
+	unsigned long util = min_t(unsigned long, SCHED_CAPACITY_SCALE,
+				   cpu_util_cfs(cpu_rq(cpu)) + other_util);
+
+	return util + schedtune_cpu_margin_with(util, cpu, NULL);
+}
+
 #else /* CONFIG_SCHED_TUNE */
 
 inline long

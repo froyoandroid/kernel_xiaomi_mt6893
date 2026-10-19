@@ -44,6 +44,10 @@
 
 #define EEPROM_I2C_MSG_SIZE_READ 2
 
+#if defined(_XIAOMI_CHOPIN_) && !defined(EEPROM_I2C_READ_MSG_LENGTH_MAX)
+/* Stock Chopin reads the camera EEPROMs in 1024-byte I2C transfers */
+#define EEPROM_I2C_READ_MSG_LENGTH_MAX 1024
+#endif
 #ifndef EEPROM_I2C_READ_MSG_LENGTH_MAX
 #define EEPROM_I2C_READ_MSG_LENGTH_MAX 255
 #endif

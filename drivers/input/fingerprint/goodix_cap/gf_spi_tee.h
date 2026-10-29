@@ -63,32 +63,11 @@ typedef enum gf_nav_event {
 
 typedef enum gf_key_event {
 	GF_KEY_NONE = 0,
-#ifdef _XIAOMI_CHOPIN_
-	GF_KEY_HOME,
-#endif
 	GF_KEY_POWER,
 	GF_KEY_MENU,
 	GF_KEY_BACK,
 	GF_KEY_CAMERA,
-#ifdef _XIAOMI_CHOPIN_
-	GF_KEY_HOME_DOUBLE_CLICK,
-#endif
 } gf_key_event_t;
-
-#ifdef _XIAOMI_CHOPIN_
-#define GF_KEY_INPUT_HOME		KEY_SELECT
-#define GF_KEY_DOUBLE_CLICK		BTN_C
-#define GF_KEY_INPUT_MENU		KEY_MENU
-#define GF_KEY_INPUT_BACK		KEY_BACK
-#define GF_KEY_INPUT_POWER		KEY_POWER
-#define GF_KEY_INPUT_CAMERA		KEY_CAMERA
-#define GF_KEY_INPUT_KPENTER            KEY_KPENTER
-
-struct gf_key {
-	enum gf_key_event key;
-	uint32_t value;	/* key down = 1, key up = 0 */
-};
-#endif
 
 enum gf_netlink_cmd {
 	GF_NETLINK_TEST = 0,
@@ -158,10 +137,6 @@ typedef struct {
 
 #define GF_IOC_ENABLE_POWER		_IO(GF_IOC_MAGIC, 7)
 #define GF_IOC_DISABLE_POWER		_IO(GF_IOC_MAGIC, 8)
-
-#ifdef _XIAOMI_CHOPIN_
-#define GF_IOC_INPUT_KEY_EVENT		_IOW(GF_IOC_MAGIC, 9, struct gf_key)
-#endif
 
 /* fp sensor has change to sleep mode while screen off */
 #define GF_IOC_ENTER_SLEEP_MODE		_IO(GF_IOC_MAGIC, 10)

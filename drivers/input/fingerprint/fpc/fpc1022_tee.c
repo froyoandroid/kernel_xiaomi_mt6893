@@ -593,10 +593,6 @@ static int fpc1022_platform_probe(struct platform_device *pldev)
 	if (spi_fingerprint == NULL) {
 		pr_notice("%s Line:%d spi device is NULL,cannot spi transfer\n",
 			  __func__, __LINE__);
-#ifdef _XIAOMI_CHOPIN_
-		ret = -EPROBE_DEFER;
-		goto err_fpc1022_malloc;
-#endif
 	} else {
 		ret = check_hwid(spi_fingerprint);
 		if (ret < 0) {
